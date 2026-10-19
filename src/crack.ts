@@ -37,7 +37,21 @@ export function dateVariants(raw: string): string[] {
   return [...new Set([dd + mm + yyyy, dd + mm + yy, yyyy + mm + dd, yy + mm + dd])];
 }
 
-/** Digit-only and letter-case variants of an id (DNI "12345678Z" → "12345678", "12345678z", …). */
+const DNI_LETTERS = "TRWAGMYFPDXBNJZSQVHLCKE";
+
+/** Spanish DNI/NIE check letter, or null if `raw` isn't an 8-digit DNI / NIE number. */
+export function dniLetter(raw: string): string | null {
+  let s = raw.trim().toUpperCase();
+  const nie = s.match(/^([XYZ])(\d{7})$/);
+  if (nie) s = String("XYZ".indexOf(nie[1])) + nie[2];
+  if (!/^\d{8}$/.test(s)) return null;
+  return DNI_LETTERS[Number(s) % 23];
+}
+
+/**
+ * Variants of an id: case-folded, digits-only, without leading zeros, and — for an
+ * 8-digit DNI or an X/Y/Z NIE number — with its computed check letter appended.
+ */
 export function idVariants(raw: string): string[] {
   const s = raw.trim();
   const out = new Set([s, s.toUpperCase(), s.toLowerCase()]);
@@ -45,6 +59,12 @@ export function idVariants(raw: string): string[] {
   if (digits) {
     out.add(digits);
     out.add(digits.replace(/^0+/, ""));
+  }
+  const letter = dniLetter(s);
+  if (letter) {
+    const base = /^[XYZxyz]/.test(s) ? s.toUpperCase() : digits;
+    out.add(base + letter);
+    out.add(base + letter.toLowerCase());
   }
   return [...out].filter(Boolean);
 }

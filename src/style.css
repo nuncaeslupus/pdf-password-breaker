@@ -183,11 +183,26 @@ button:disabled {
   margin-top: 20px;
 }
 
+.bar-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .bar {
+  flex: 1;
   height: 8px;
   background: var(--line);
   border-radius: 4px;
   overflow: hidden;
+}
+
+.eta {
+  min-width: 6em;
+  font-size: 0.85rem;
+  color: var(--muted);
+  white-space: nowrap;
+  text-align: right;
 }
 
 .bar-fill {

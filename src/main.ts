@@ -11,7 +11,21 @@ const cancelBtn = $<HTMLButtonElement>("cancel");
 const statusBox = $<HTMLElement>("status");
 const statusText = $<HTMLParagraphElement>("statusText");
 const barFill = $<HTMLElement>("barFill");
+const eta = $<HTMLElement>("eta");
 const result = $<HTMLElement>("result");
+
+let startedAt = 0;
+
+/** "45 s" / "3 min" / "1 h 12 min", or "" when it can't be estimated yet. */
+function fmtEta(sec: number): string {
+  if (!isFinite(sec) || sec < 0) return "";
+  if (sec < 1) return "<1 s";
+  const s = Math.round(sec);
+  if (s < 60) return `${s} s`;
+  const m = Math.round(s / 60);
+  if (m < 60) return `${m} min`;
+  return `${Math.floor(m / 60)} h ${m % 60} min`;
+}
 
 let pdfBytes: Uint8Array | null = null;
 let fileName = "documento.pdf";
@@ -82,6 +96,8 @@ runBtn.addEventListener("click", () => {
   statusBox.hidden = false;
   runBtn.hidden = true;
   cancelBtn.hidden = false;
+  eta.textContent = "";
+  startedAt = performance.now();
   statusText.textContent = `Probando ${total.toLocaleString("es")} candidato(s)…`;
   // Copy the bytes for the worker so the originals stay here for unlocking.
   worker.postMessage({ bytes: pdfBytes.slice(), hints } satisfies StartMsg);
@@ -96,6 +112,7 @@ cancelBtn.addEventListener("click", () => {
 function finish(msg: string) {
   runBtn.hidden = false;
   cancelBtn.hidden = true;
+  eta.textContent = "";
   if (msg) statusText.textContent = msg;
 }
 
@@ -104,12 +121,18 @@ worker.addEventListener("message", (e: MessageEvent<OutMsg>) => {
   const total = (worker as Worker & { _total?: number })._total ?? 1;
   if (m.type === "progress") {
     barFill.style.width = `${Math.min(100, (m.tried / total) * 100)}%`;
+    const elapsed = (performance.now() - startedAt) / 1000;
+    const remaining = ((total - m.tried) * elapsed) / m.tried;
+    const left = fmtEta(remaining);
+    eta.textContent = left ? `~${left}` : "";
     statusText.textContent = `Probados ${m.tried.toLocaleString("es")} de ${total.toLocaleString("es")} · último: ${m.current}`;
   } else if (m.type === "found") {
     barFill.style.width = "100%";
+    eta.textContent = "";
     finish(`Contraseña encontrada tras ${m.tried.toLocaleString("es")} intento(s).`);
     void showFound(m.password);
   } else if (m.type === "exhausted") {
+    eta.textContent = "";
     barFill.style.width = "100%";
     finish(`Sin suerte: ninguno de los ${m.tried.toLocaleString("es")} candidatos abrió el PDF.`);
   } else if (m.type === "error") {

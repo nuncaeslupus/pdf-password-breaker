@@ -1,6 +1,6 @@
 import { PDFDocument } from "@cantoo/pdf-lib";
 import { describe, expect, it } from "vitest";
-import { candidates, countCandidates, dateVariants, idVariants, tryPassword, unlock } from "../src/crack";
+import { candidates, countCandidates, dateVariants, dniLetter, idVariants, tryPassword, unlock } from "../src/crack";
 
 async function encrypted(userPassword: string): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
@@ -19,6 +19,14 @@ describe("candidate generation", () => {
     expect(idVariants("01234567Z")).toContain("01234567Z");
     expect(idVariants("01234567Z")).toContain("01234567");
     expect(idVariants("01234567Z")).toContain("1234567");
+  });
+
+  it("computes the DNI/NIE check letter and appends it to a bare number", () => {
+    expect(dniLetter("12345678")).toBe("Z");
+    expect(dniLetter("X1234567")).toBe(dniLetter("01234567"));
+    expect(dniLetter("123")).toBeNull();
+    expect(idVariants("12345678")).toContain("12345678Z");
+    expect(idVariants("12345678")).toContain("12345678z");
   });
 
   it("yields words, then ids, then dates, then a numeric sweep, de-duplicated", () => {

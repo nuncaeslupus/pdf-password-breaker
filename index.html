@@ -75,6 +75,24 @@
       </div>
 
       <div id="result" class="result" hidden></div>
+
+      <fieldset id="gpu" hidden>
+        <legend>3. ¿Contraseña difícil? Pruébala en tu GPU con hashcat</legend>
+        <p class="hint">
+          Si las pistas no bastan, tu tarjeta gráfica prueba millones de contraseñas por
+          segundo con <strong>hashcat</strong> (un programa aparte, gratuito). Copia el
+          «hash» de tu PDF y sigue los pasos. El PDF nunca sale de tu equipo.
+        </p>
+        <label>
+          Hash de tu PDF
+          <textarea id="hashOut" rows="3" readonly></textarea>
+        </label>
+        <div class="actions">
+          <button id="copyHash">Copiar hash</button>
+          <span id="copyMsg" class="hint"></span>
+        </div>
+        <div id="hashcatHelp" class="help"></div>
+      </fieldset>
     </main>
     <footer>
       Solo para documentos propios. Gratis, de código abierto y sin servidor.

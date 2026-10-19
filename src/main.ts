@@ -1,4 +1,4 @@
-import { countCandidates, tryPassword, unlock, type Hints } from "./crack";
+import { countCandidates, extractHash, tryPassword, unlock, type Hints, type PdfHash } from "./crack";
 import type { OutMsg, StartMsg } from "./worker";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -13,6 +13,11 @@ const statusText = $<HTMLParagraphElement>("statusText");
 const barFill = $<HTMLElement>("barFill");
 const eta = $<HTMLElement>("eta");
 const result = $<HTMLElement>("result");
+const gpu = $<HTMLElement>("gpu");
+const hashOut = $<HTMLTextAreaElement>("hashOut");
+const copyHash = $<HTMLButtonElement>("copyHash");
+const copyMsg = $<HTMLElement>("copyMsg");
+const hashcatHelp = $<HTMLElement>("hashcatHelp");
 
 let startedAt = 0;
 
@@ -49,12 +54,62 @@ async function loadFile(file: File) {
     fileInfo.textContent = `${file.name} · protegido con contraseña`;
     fileInfo.classList.remove("ok");
     runBtn.disabled = false;
+    void showHash(pdfBytes);
   } else {
     fileInfo.textContent = `${file.name} · este PDF no pide contraseña para abrirse`;
     fileInfo.classList.add("ok");
     runBtn.disabled = true;
+    gpu.hidden = true;
   }
 }
+
+/** The exact hashcat command lines for this file's encryption. */
+function helpFor(h: PdfHash): string {
+  const slow = h.mode >= 10600; // AES-256 is slow even on a GPU
+  const speed = slow
+    ? "Es cifrado AES-256: lento incluso en GPU, así que céntrate en máscaras cortas (fechas, PIN)."
+    : "Es cifrado RC4/antiguo: muy rápido en GPU, millones de contraseñas por segundo.";
+  const cmd = (a: string) => `<code>hashcat -m ${h.mode} hash.txt ${a}</code>`;
+  return `
+    <p>Tu PDF usa <strong>${h.modeLabel}</strong> → modo <code>-m ${h.mode}</code> de hashcat. ${speed}</p>
+    <ol>
+      <li>Pulsa <strong>Copiar hash</strong> y pégalo en un archivo de texto llamado <code>hash.txt</code>.</li>
+      <li>Instala hashcat desde <a href="https://hashcat.net/hashcat/" target="_blank" rel="noopener">hashcat.net</a> (Windows, macOS o Linux).</li>
+      <li>En una terminal, en la carpeta del <code>hash.txt</code>, prueba una de estas:</li>
+    </ol>
+    <ul>
+      <li>Solo dígitos, 6 cifras (tipo PIN o fecha corta): ${cmd("-a 3 ?d?d?d?d?d?d")}</li>
+      <li>Fecha completa ddmmaaaa (8 cifras): ${cmd("-a 3 ?d?d?d?d?d?d?d?d")}</li>
+      <li>DNI de 8 cifras + letra: ${cmd("-a 3 ?d?d?d?d?d?d?d?d?u")}</li>
+      <li>Con una lista de palabras (diccionario.txt): ${cmd("diccionario.txt")}</li>
+    </ul>
+    <p>Cuando termine, vuelve a verla con <code>hashcat -m ${h.mode} hash.txt --show</code>. En <code>-a 3</code>, <code>?d</code> = un dígito y <code>?u</code> = una mayúscula.</p>
+  `;
+}
+
+async function showHash(bytes: Uint8Array) {
+  gpu.hidden = true;
+  copyMsg.textContent = "";
+  try {
+    const h = await extractHash(bytes);
+    if (!h) return;
+    hashOut.value = h.hash;
+    hashcatHelp.innerHTML = helpFor(h);
+    gpu.hidden = false;
+  } catch {
+    // Non-standard encryption we can't read — the hint-based search above still works.
+  }
+}
+
+copyHash.addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(hashOut.value);
+    copyMsg.textContent = "Copiado.";
+  } catch {
+    hashOut.select();
+    copyMsg.textContent = "Selecciónalo y copia con Ctrl+C.";
+  }
+});
 
 function reset() {
   statusBox.hidden = true;

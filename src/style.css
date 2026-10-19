@@ -244,6 +244,40 @@ a.download {
   display: inline-block;
 }
 
+.help {
+  margin-top: 8px;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.help ol,
+.help ul {
+  padding-left: 20px;
+}
+
+.help li {
+  margin: 4px 0;
+}
+
+.help code,
+#hashOut {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+
+.help code {
+  padding: 1px 5px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-size: 0.85em;
+  word-break: break-all;
+}
+
+#hashOut {
+  font-size: 0.8rem;
+  word-break: break-all;
+}
+
 footer {
   padding: 24px 16px 40px;
   color: var(--muted);

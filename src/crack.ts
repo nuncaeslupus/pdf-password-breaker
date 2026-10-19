@@ -1,4 +1,4 @@
-import { PDFDocument } from "@cantoo/pdf-lib";
+import { PDFArray, PDFBool, PDFDict, PDFDocument, PDFName, PDFNumber, type PDFObject } from "@cantoo/pdf-lib";
 
 /**
  * True when `pw` decrypts the PDF. @cantoo/pdf-lib verifies the password against the
@@ -95,6 +95,65 @@ export function countCandidates(h: Hints): number {
   let n = 0;
   for (const _ of candidates({ ...h, numericDigits: 0 })) n++;
   return n + (h.numericDigits > 0 ? 10 ** h.numericDigits : 0);
+}
+
+const toHex = (b: Uint8Array) =>
+  Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
+
+/** Bytes of a /O /U /ID string entry, whether stored as a hex or a literal PDF string. */
+function strBytes(o: PDFObject | undefined): Uint8Array {
+  const anyO = o as { asBytes?: () => Uint8Array } | undefined;
+  return anyO?.asBytes ? anyO.asBytes() : new Uint8Array();
+}
+
+export interface PdfHash {
+  hash: string; // the $pdf$... line for hashcat/John
+  v: number;
+  r: number;
+  mode: number; // hashcat -m value
+  modeLabel: string; // human description of the encryption
+}
+
+/**
+ * The PDF's encryption parameters as a pdf2john `$pdf$` hash, for cracking on a GPU with
+ * hashcat/John. Format: $pdf$V*R*length*P*encMeta*idLen*id*uLen*U*oLen*O (P as signed 32-bit).
+ * Returns null if the file isn't encrypted with the Standard security handler.
+ */
+export async function extractHash(bytes: Uint8Array): Promise<PdfHash | null> {
+  const doc = await PDFDocument.load(bytes, { ignoreEncryption: true });
+  const ctx = doc.context;
+  const enc = ctx.lookup(ctx.trailerInfo.Encrypt);
+  if (!(enc instanceof PDFDict)) return null;
+
+  const num = (k: string, def = 0) => {
+    const v = enc.get(PDFName.of(k));
+    return v instanceof PDFNumber ? v.asNumber() : def;
+  };
+  const v = num("V", 1);
+  const r = num("R", 2);
+  const length = num("Length", 40);
+  const p = num("P") | 0; // force signed 32-bit, as pdf2john prints it
+  const metaObj = enc.get(PDFName.of("EncryptMetadata"));
+  const encMeta = metaObj instanceof PDFBool ? (metaObj.asBoolean() ? 1 : 0) : 1;
+
+  const o = strBytes(enc.get(PDFName.of("O")));
+  const u = strBytes(enc.get(PDFName.of("U")));
+  const idArr = ctx.trailerInfo.ID;
+  const id = idArr instanceof PDFArray ? strBytes(idArr.get(0)) : new Uint8Array();
+
+  const hash = `$pdf$${v}*${r}*${length}*${p}*${encMeta}*${id.length}*${toHex(id)}*${u.length}*${toHex(u)}*${o.length}*${toHex(o)}`;
+
+  // hashcat mode by revision: R2 RC4-40, R3/4 RC4/AES-128, R5/6 AES-256.
+  const { mode, modeLabel } =
+    r <= 2
+      ? { mode: 10400, modeLabel: "PDF 1.1–1.3 (RC4 40 bits)" }
+      : r <= 4
+        ? { mode: 10500, modeLabel: "PDF 1.4–1.6 (RC4/AES, Acrobat 5–8)" }
+        : r === 5
+          ? { mode: 10600, modeLabel: "PDF 1.7 nivel 3 (AES-256, Acrobat 9)" }
+          : { mode: 10700, modeLabel: "PDF 1.7 nivel 8 (AES-256, Acrobat 10–11)" };
+
+  return { hash, v, r, mode, modeLabel };
 }
 
 /** Re-saves the PDF without encryption once the password is known. Drops outlines/forms. */

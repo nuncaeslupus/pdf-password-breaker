@@ -20,6 +20,32 @@ eso no se recupera con fuerza bruta en un navegador.
 - Al acertar, ofrece descargar una copia **sin contraseña** (se pierden marcadores
   y formularios; el contenido se conserva).
 
+## Contraseñas difíciles: hashcat en tu GPU
+
+Cuando las pistas no bastan, la app extrae el «hash» del PDF (formato
+pdf2john, `$pdf$…`) para que lo pruebes en tu tarjeta gráfica con
+[hashcat](https://hashcat.net/hashcat/), mucho más rápido que el navegador. La
+propia página muestra el modo `-m` correcto según el cifrado del archivo y
+comandos listos para copiar; el PDF no sale de tu equipo (solo se exporta el
+hash). Resumen:
+
+| Cifrado del PDF | Revisión | hashcat |
+|---|---|---|
+| RC4 40 bits | R2 | `-m 10400` (muy rápido) |
+| RC4/AES-128 | R3/R4 | `-m 10500` |
+| AES-256 (Acrobat 9) | R5 | `-m 10600` (lento) |
+| AES-256 (Acrobat 10–11) | R6 | `-m 10700` (lento) |
+
+Pega el hash en `hash.txt` y, por ejemplo, para una fecha de 8 cifras:
+
+```bash
+hashcat -m 10700 hash.txt -a 3 ?d?d?d?d?d?d?d?d
+hashcat -m 10700 hash.txt --show   # ver la contraseña encontrada
+```
+
+Con AES-256 (10600/10700) incluso una GPU va lenta: céntrate en máscaras cortas
+(fechas, PIN) o en un diccionario. Con RC4 (10400/10500) vuela.
+
 ## Desarrollo
 
 ```bash

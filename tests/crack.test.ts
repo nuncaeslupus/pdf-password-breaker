@@ -1,6 +1,6 @@
 import { PDFDocument } from "@cantoo/pdf-lib";
 import { describe, expect, it } from "vitest";
-import { candidates, countCandidates, dateVariants, dniLetter, idVariants, tryPassword, unlock } from "../src/crack";
+import { candidates, countCandidates, dateVariants, dniLetter, extractHash, idVariants, tryPassword, unlock } from "../src/crack";
 
 async function encrypted(userPassword: string): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
@@ -61,5 +61,32 @@ describe("tryPassword against a real encrypted PDF", () => {
     expect(found).toBe("230590");
     const plain = await unlock(bytes, found!);
     expect((await PDFDocument.load(plain)).isEncrypted).toBe(false);
+  });
+});
+
+describe("extractHash", () => {
+  it("builds a pdf2john $pdf$ line with the file's real parameters", async () => {
+    const bytes = await encrypted("verano24");
+    const h = await extractHash(bytes);
+    expect(h).not.toBeNull();
+    // pdf-lib encrypts as AES-256 R6 → hashcat mode 10700.
+    expect(h!.v).toBe(5);
+    expect(h!.r).toBe(6);
+    expect(h!.mode).toBe(10700);
+    // $pdf$V*R*length*P*encMeta*idLen*id*uLen*U*oLen*O — 12 fields after the tag.
+    const parts = h!.hash.replace(/^\$pdf\$/, "").split("*");
+    expect(parts.slice(0, 5)).toEqual(["5", "6", "256", expect.any(String), "1"]);
+    expect(Number(parts[5])).toBe(16); // file ID is 16 bytes
+    expect(parts[6]).toMatch(/^[0-9a-f]{32}$/);
+    expect(Number(parts[7])).toBe(48); // R6 /U is 48 bytes
+    expect(parts[8]).toMatch(/^[0-9a-f]{96}$/);
+    expect(Number(parts[9])).toBe(48); // R6 /O is 48 bytes
+    expect(Number(parts[3]) | 0).toBe(Number(parts[3])); // P is a signed 32-bit int
+  });
+
+  it("returns null for a PDF that isn't encrypted", async () => {
+    const doc = await PDFDocument.create();
+    doc.addPage([595, 842]);
+    expect(await extractHash(await doc.save())).toBeNull();
   });
 });

@@ -50,46 +50,94 @@
         <p class="file-info" id="fileInfo" hidden></p>
       </fieldset>
 
-      <fieldset id="remember" disabled>
-        <legend data-i18n="legend2">2. Lo que recuerdas</legend>
+      <fieldset id="knownBox" disabled>
+        <legend data-i18n="knownLegend">¿Ya la conoces?</legend>
         <label class="field">
           <span class="field-head">
-            <strong data-i18n="wordsLabel">Palabras probables</strong>
-            <small data-i18n="wordsHint">Una por línea. Se probará tal cual y en may./min./Capital.</small>
+            <strong data-i18n="knownLabel">Contraseña</strong>
+            <small data-i18n="knownHint">Si la recuerdas, escríbela y pulsa Buscar para quitarla.</small>
           </span>
-          <textarea id="words" rows="2" placeholder="factura&#10;MiEmpresa2024"></textarea>
+          <input type="text" id="known" autocomplete="off" placeholder="MiContraseña" />
         </label>
-        <label class="field">
-          <span class="field-head">
-            <strong data-i18n="idsLabel">Números (DNI, cuenta, tel.)</strong>
-            <small data-i18n="idsHint">Uno por línea. Se probará con y sin letra de control y sin ceros.</small>
-          </span>
-          <textarea id="ids" rows="2" placeholder="12345678Z&#10;600123456"></textarea>
-        </label>
-        <label class="field">
-          <span class="field-head">
-            <strong data-i18n="datesLabel">Fechas</strong>
-            <small data-i18n="datesHint">Una por línea. Se probará en varios formatos.</small>
-          </span>
-          <textarea id="dates" rows="2" placeholder="23/05/1990&#10;1985-12-01"></textarea>
-        </label>
-        <label class="inline">
-          <span data-i18n="sweepLabel">Barrido numérico: probar todos los números de</span>
-          <select id="digits">
-            <option value="0" data-i18n="sweepOff">— (desactivado)</option>
-            <option value="3" data-i18n="sweep3">3 cifras</option>
-            <option value="4" selected data-i18n="sweep4">4 cifras (PIN)</option>
-            <option value="5" data-i18n="sweep5">5 cifras</option>
-            <option value="6" data-i18n="sweep6">6 cifras</option>
-          </select>
-        </label>
-        <p class="hint" data-i18n="sweepHint">
-          El barrido es lento: cada intento abre el PDF. Hasta 6 cifras es razonable.
-        </p>
       </fieldset>
 
-      <details id="gpu">
-        <summary data-i18n="gpuSummary">3. ¿Contraseña difícil? Úsala en tu GPU con hashcat</summary>
+      <details id="step2" class="step">
+        <summary data-i18n="legend2">2. Lo que recuerdas</summary>
+        <div class="details-body">
+          <fieldset id="remember" class="bare" disabled>
+            <label class="field">
+              <span class="field-head">
+                <strong data-i18n="wordsLabel">Palabras probables</strong>
+                <small data-i18n="wordsHint">Una por línea. Se probará tal cual y en may./min./Capital.</small>
+              </span>
+              <textarea id="words" rows="2" placeholder="factura&#10;MiEmpresa2024"></textarea>
+            </label>
+            <label class="field">
+              <span class="field-head">
+                <strong data-i18n="idsLabel">Números (DNI, cuenta, tel.)</strong>
+                <small data-i18n="idsHint">Uno por línea. Se probará con y sin letra de control y sin ceros.</small>
+              </span>
+              <textarea id="ids" rows="2" placeholder="12345678Z&#10;600123456"></textarea>
+            </label>
+            <label class="field">
+              <span class="field-head">
+                <strong data-i18n="datesLabel">Fechas</strong>
+                <small data-i18n="datesHint">Una por línea. Se probará en varios formatos.</small>
+              </span>
+              <textarea id="dates" rows="2" placeholder="23/05/1990&#10;1985-12-01"></textarea>
+            </label>
+          </fieldset>
+        </div>
+      </details>
+
+      <details id="step3" class="step">
+        <summary data-i18n="legend3">3. Fuerza bruta</summary>
+        <div class="details-body">
+          <fieldset id="brute" class="bare" disabled>
+            <p class="hint" data-i18n="bruteIntro">
+              Prueba todas las combinaciones de un conjunto de caracteres y una longitud exacta.
+              Práctico para un PIN o una clave muy corta.
+            </p>
+            <label class="inline">
+              <span data-i18n="bruteCharsLabel">Caracteres</span>
+              <select id="bruteChars">
+                <option value="" data-i18n="bruteOff">— (desactivado)</option>
+                <option value="0123456789" selected data-i18n="bruteDigits">dígitos (0-9)</option>
+                <option value="abcdefghijklmnopqrstuvwxyz" data-i18n="bruteLower">minúsculas (a-z)</option>
+                <option value="abcdefghijklmnopqrstuvwxyz0123456789" data-i18n="bruteLowerDigits">
+                  minúsculas + dígitos
+                </option>
+                <option value="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ" data-i18n="bruteLetters">
+                  may. + min. (a-z, A-Z)
+                </option>
+                <option
+                  value="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+                  data-i18n="bruteAll"
+                >
+                  letras + dígitos
+                </option>
+              </select>
+            </label>
+            <label class="inline">
+              <span data-i18n="bruteLenLabel">Longitud exacta</span>
+              <select id="bruteLen">
+                <option value="3">3</option>
+                <option value="4" selected>4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+              </select>
+            </label>
+            <p class="hint" id="bruteCount"></p>
+            <p class="hint" data-i18n="bruteWarn">
+              Cada intento abre el PDF, así que el espacio crece muy rápido: con letras, 5 o más
+              caracteres puede tardar horas. Para eso, usa hashcat (paso 4).
+            </p>
+          </fieldset>
+        </div>
+      </details>
+
+      <details id="gpu" class="step">
+        <summary data-i18n="gpuSummary">4. ¿Contraseña difícil? Úsala en tu GPU con hashcat</summary>
         <div class="details-body">
           <p class="hint" data-i18n="gpuIntro">
             Si las pistas no bastan, tu tarjeta gráfica prueba millones de contraseñas por segundo

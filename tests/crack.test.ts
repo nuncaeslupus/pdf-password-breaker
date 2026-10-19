@@ -1,6 +1,6 @@
 import { PDFDocument } from "@cantoo/pdf-lib";
 import { describe, expect, it } from "vitest";
-import { candidates, caseVariants, countCandidates, dateVariants, dniLetter, extractHash, idVariants, tryPassword, unlock } from "../src/crack";
+import { candidates, caseVariants, countCandidates, dateVariants, dniLetter, extractHash, idVariants, sweep, tryPassword, unlock } from "../src/crack";
 
 async function encrypted(userPassword: string): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
@@ -34,8 +34,14 @@ describe("candidate generation", () => {
     expect(caseVariants("1234")).toEqual(["1234"]); // nothing to case-fold
   });
 
-  it("yields words (with case variants), then ids, then dates, then a numeric sweep, de-duplicated", () => {
-    const list = [...candidates({ words: ["abc", "abc"], ids: [], dates: [], numericDigits: 2 })];
+  it("sweeps every string of a charset at an exact length, in odometer order", () => {
+    expect([...sweep("ab", 2)]).toEqual(["aa", "ab", "ba", "bb"]);
+    expect([...sweep("", 3)]).toEqual([]);
+    expect([...sweep("ab", 0)]).toEqual([]);
+  });
+
+  it("yields words (with case variants), then ids, then dates, then the brute sweep, de-duplicated", () => {
+    const list = [...candidates({ words: ["abc", "abc"], ids: [], dates: [], sweepChars: "0123456789", sweepLen: 2 })];
     expect(list[0]).toBe("abc");
     expect(list.filter((x) => x === "abc")).toHaveLength(1);
     expect(list).toContain("ABC");
@@ -43,9 +49,9 @@ describe("candidate generation", () => {
     expect(list).toContain("99");
   });
 
-  it("counts an upper bound that matches the numeric space", () => {
-    // "ab" → ab, AB, Ab (lowercase dup dropped) = 3 variants, plus the 1000 numbers.
-    expect(countCandidates({ words: ["ab"], ids: [], dates: [], numericDigits: 3 })).toBe(3 + 1000);
+  it("counts an upper bound that matches the sweep space", () => {
+    // "ab" → ab, AB, Ab (lowercase dup dropped) = 3 variants, plus 10^3 numbers.
+    expect(countCandidates({ words: ["ab"], ids: [], dates: [], sweepChars: "0123456789", sweepLen: 3 })).toBe(3 + 1000);
   });
 });
 
@@ -59,7 +65,7 @@ describe("tryPassword against a real encrypted PDF", () => {
   it("finds the password through the candidate loop and unlocks the file", async () => {
     const bytes = await encrypted("230590");
     let found: string | undefined;
-    for (const pw of candidates({ words: [], ids: [], dates: ["23/05/1990"], numericDigits: 0 })) {
+    for (const pw of candidates({ words: [], ids: [], dates: ["23/05/1990"], sweepChars: "", sweepLen: 0 })) {
       if (await tryPassword(bytes, pw)) {
         found = pw;
         break;

@@ -7,7 +7,13 @@ const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as 
 const fileInput = $<HTMLInputElement>("file");
 const drop = $<HTMLElement>("drop");
 const fileInfo = $<HTMLParagraphElement>("fileInfo");
+const known = $<HTMLInputElement>("known");
+const knownBox = $<HTMLFieldSetElement>("knownBox");
 const remember = $<HTMLFieldSetElement>("remember");
+const brute = $<HTMLFieldSetElement>("brute");
+const bruteChars = $<HTMLSelectElement>("bruteChars");
+const bruteLen = $<HTMLSelectElement>("bruteLen");
+const bruteCount = $<HTMLParagraphElement>("bruteCount");
 const runBtn = $<HTMLButtonElement>("run");
 const cancelBtn = $<HTMLButtonElement>("cancel");
 const statusBox = $<HTMLElement>("status");
@@ -42,7 +48,16 @@ function applyLang() {
   renderStatus();
   renderResult();
   renderGpu();
+  renderBruteCount();
 }
+
+function renderBruteCount() {
+  const n = bruteChars.value ? bruteChars.value.length ** Number(bruteLen.value) : 0;
+  bruteCount.textContent = n ? t(lang, "bruteCount", { n: n.toLocaleString(lang) }) : "";
+}
+
+bruteChars.addEventListener("change", renderBruteCount);
+bruteLen.addEventListener("change", renderBruteCount);
 
 function renderGpu() {
   if (currentHash) {
@@ -146,7 +161,9 @@ async function loadFile(file: File) {
   fileState = { name: file.name, locked };
   fileInfo.hidden = false;
   renderFileInfo();
+  knownBox.disabled = !locked;
   remember.disabled = !locked;
+  brute.disabled = !locked;
   runBtn.disabled = !locked;
   if (locked) void showHash(pdfBytes);
   else {
@@ -182,10 +199,11 @@ drop.addEventListener("drop", (e) => {
 runBtn.addEventListener("click", () => {
   if (!pdfBytes) return;
   const hints: Hints = {
-    words: lines("words"),
+    words: [known.value.trim(), ...lines("words")].filter(Boolean),
     ids: lines("ids"),
     dates: lines("dates"),
-    numericDigits: Number($<HTMLSelectElement>("digits").value),
+    sweepChars: bruteChars.value,
+    sweepLen: Number(bruteLen.value),
   };
   const total = countCandidates(hints);
   reset();

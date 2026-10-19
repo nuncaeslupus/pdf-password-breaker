@@ -19,7 +19,23 @@ export interface Hints {
   words: string[]; // tried verbatim: names, known words, the password if you half-remember it
   ids: string[]; // DNI/NIE/account/phone — digits and letter variants are derived
   dates: string[]; // free-form dates ("1990-05-23", "23/05/1990"); formats are derived
-  numericDigits: number; // also sweep every number of exactly this many digits (0 = off)
+  sweepChars: string; // brute-force charset to try every combination of ("" = off)
+  sweepLen: number; // exact length of the swept passwords
+}
+
+/** Every string of exactly `len` characters over `charset`, in odometer order. */
+export function* sweep(charset: string, len: number): Generator<string> {
+  if (!charset || len <= 0) return;
+  const base = charset.length;
+  const total = base ** len;
+  const idx = new Array<number>(len).fill(0);
+  for (let i = 0; i < total; i++) {
+    yield idx.map((d) => charset[d]).join("");
+    for (let p = len - 1; p >= 0; p--) {
+      if (++idx[p] < base) break;
+      idx[p] = 0;
+    }
+  }
 }
 
 /** Formats that invoice/bank providers commonly use when the password is a date. */
@@ -86,23 +102,18 @@ export function* candidates(h: Hints): Generator<string> {
   for (const id of h.ids) for (const v of idVariants(id)) if (fresh(v)) yield v;
   for (const dt of h.dates) for (const v of dateVariants(dt)) if (fresh(v)) yield v;
 
-  // ponytail: numeric sweep is the capped, dumb option; hints above cover the real cases.
-  // Each try re-parses the PDF (~ms), so large spaces are slow — the UI caps digits.
-  const n = h.numericDigits;
-  if (n > 0) {
-    const max = 10 ** n;
-    for (let i = 0; i < max; i++) {
-      const v = String(i).padStart(n, "0");
-      if (fresh(v)) yield v;
-    }
+  // ponytail: brute force is the dumb fallback; hints above cover the real cases.
+  // Each try re-parses the PDF (~ms), so the UI warns as the charset/length grow.
+  if (h.sweepChars && h.sweepLen > 0) {
+    for (const v of sweep(h.sweepChars, h.sweepLen)) if (fresh(v)) yield v;
   }
 }
 
 /** Upper bound on how many candidates `candidates(h)` will yield, for a progress bar. */
 export function countCandidates(h: Hints): number {
   let n = 0;
-  for (const _ of candidates({ ...h, numericDigits: 0 })) n++;
-  return n + (h.numericDigits > 0 ? 10 ** h.numericDigits : 0);
+  for (const _ of candidates({ ...h, sweepChars: "" })) n++;
+  return n + (h.sweepChars && h.sweepLen > 0 ? h.sweepChars.length ** h.sweepLen : 0);
 }
 
 const toHex = (b: Uint8Array) =>

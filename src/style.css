@@ -149,7 +149,8 @@ label > small {
 }
 
 textarea,
-select {
+select,
+input[type="text"] {
   width: 100%;
   max-width: 100%;
   font: inherit;
@@ -159,6 +160,14 @@ select {
   border: 1px solid var(--line);
   border-radius: 6px;
   resize: vertical;
+}
+
+/* Inner fieldset used only to bulk-disable a step; no box of its own. */
+fieldset.bare {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
 }
 
 /* Label + short hint sit to the left of the textarea, so hints never land
@@ -386,14 +395,14 @@ a.download {
   display: inline-block;
 }
 
-details#gpu {
+details.step {
   margin-top: 20px;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 10px;
 }
 
-details#gpu > summary {
+details.step > summary {
   padding: 14px 18px;
   font-weight: 600;
   cursor: pointer;
@@ -403,17 +412,17 @@ details#gpu > summary {
   gap: 8px;
 }
 
-details#gpu > summary::-webkit-details-marker {
+details.step > summary::-webkit-details-marker {
   display: none;
 }
 
-details#gpu > summary::before {
+details.step > summary::before {
   content: "▸";
   color: var(--accent);
   transition: transform 0.15s;
 }
 
-details#gpu[open] > summary::before {
+details.step[open] > summary::before {
   transform: rotate(90deg);
 }
 

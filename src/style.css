@@ -395,6 +395,15 @@ a.download {
   display: inline-block;
 }
 
+.bulk-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+  font-size: 0.95rem;
+}
+
 details.step {
   margin-top: 20px;
   background: var(--panel);

@@ -84,14 +84,18 @@ document.querySelectorAll<HTMLButtonElement>(".langs button").forEach((b) =>
 );
 
 // ── render state (so a language switch re-translates what's on screen) ───────
-let fileState: { name: string; locked: boolean } | null = null;
+let fileState: { name: string; locked: boolean; count?: number; lockedCount?: number } | null = null;
 let statusState: { key: string; vars: Record<string, string | number>; tone: string } | null = null;
 let resultState: { password: string; blobUrl: string | null } | null = null;
 let currentHash: PdfHash | null = null;
 
 function renderFileInfo() {
   if (!fileState) return;
-  fileInfo.textContent = t(lang, fileState.locked ? "fileLocked" : "fileOpen", { name: fileState.name });
+  if (fileState.count && fileState.count > 1) {
+    fileInfo.textContent = t(lang, "fileBatch", { n: fileState.count, locked: fileState.lockedCount! });
+  } else {
+    fileInfo.textContent = t(lang, fileState.locked ? "fileLocked" : "fileOpen", { name: fileState.name });
+  }
   fileInfo.classList.toggle("locked", fileState.locked);
   fileInfo.classList.toggle("ok", !fileState.locked);
 }
@@ -142,7 +146,8 @@ function fmtEta(sec: number): string {
 }
 
 // ── file handling ─────────────────────────────────────────────────────────────
-let pdfBytes: Uint8Array | null = null;
+let docs: { name: string; bytes: Uint8Array; locked: boolean }[] = [];
+let pdfBytes: Uint8Array | null = null; // the single active doc, for the recovery path
 let fileName = "documento.pdf";
 
 const worker = new Worker(new URL("./worker.ts", import.meta.url), { type: "module" });
@@ -153,19 +158,28 @@ const lines = (id: string) =>
     .map((s) => s.trim())
     .filter(Boolean);
 
-async function loadFile(file: File) {
-  fileName = file.name;
-  pdfBytes = new Uint8Array(await file.arrayBuffer());
+async function loadFiles(files: FileList | File[]) {
   reset();
-  const locked = !(await tryPassword(pdfBytes, ""));
-  fileState = { name: file.name, locked };
+  docs = [];
+  for (const file of Array.from(files)) {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    docs.push({ name: file.name, bytes, locked: !(await tryPassword(bytes, "")) });
+  }
+  if (!docs.length) return;
+  const lockedCount = docs.filter((d) => d.locked).length;
+  const multi = docs.length > 1;
+  pdfBytes = multi ? null : docs[0].bytes;
+  fileName = docs[0].name;
+  fileState = { name: docs[0].name, locked: lockedCount > 0, count: docs.length, lockedCount };
   fileInfo.hidden = false;
   renderFileInfo();
-  knownBox.disabled = !locked;
-  remember.disabled = !locked;
-  brute.disabled = !locked;
-  runBtn.disabled = !locked;
-  if (locked) void showHash(pdfBytes);
+
+  knownBox.disabled = lockedCount === 0;
+  remember.disabled = multi || lockedCount === 0; // hint search works on one file only
+  brute.disabled = multi || lockedCount === 0;
+  runBtn.disabled = lockedCount === 0;
+
+  if (!multi && docs[0].locked) void showHash(docs[0].bytes);
   else {
     currentHash = null;
     renderGpu();
@@ -181,7 +195,7 @@ function reset() {
 }
 
 fileInput.addEventListener("change", () => {
-  if (fileInput.files?.[0]) void loadFile(fileInput.files[0]);
+  if (fileInput.files?.length) void loadFiles(fileInput.files);
 });
 drop.addEventListener("dragover", (e) => {
   e.preventDefault();
@@ -191,12 +205,16 @@ drop.addEventListener("dragleave", () => drop.classList.remove("over"));
 drop.addEventListener("drop", (e) => {
   e.preventDefault();
   drop.classList.remove("over");
-  const f = e.dataTransfer?.files?.[0];
-  if (f) void loadFile(f);
+  const f = e.dataTransfer?.files;
+  if (f?.length) void loadFiles(f);
 });
 
 // ── search ────────────────────────────────────────────────────────────────────
 runBtn.addEventListener("click", () => {
+  if (docs.length > 1) {
+    void bulkRemove();
+    return;
+  }
   if (!pdfBytes) return;
   const hints: Hints = {
     words: [known.value.trim(), ...lines("words")].filter(Boolean),
@@ -272,6 +290,53 @@ async function showFound(password: string) {
   }
   resultState = { password, blobUrl };
   renderResult();
+}
+
+// Bulk: one shared known password across every loaded file. No search, just
+// tryPassword + unlock per file. ponytail: results aren't re-translated on a
+// language switch (one-shot action list), unlike the single-file renderResult.
+async function bulkRemove() {
+  const pw = known.value.trim();
+  reset();
+  statusBox.hidden = false;
+  barFill.style.width = "0%";
+  eta.textContent = "";
+  if (!pw) {
+    setStatus("bulkNeedPassword", {}, "bad");
+    return;
+  }
+  result.hidden = false;
+  result.innerHTML = "";
+  const list = document.createElement("div");
+  result.appendChild(list);
+  let ok = 0;
+  for (let i = 0; i < docs.length; i++) {
+    const d = docs[i];
+    const row = document.createElement("p");
+    row.className = "bulk-row";
+    if (!d.locked) {
+      row.textContent = `${d.name} — ${t(lang, "bulkAlreadyOpen")}`;
+    } else if (await tryPassword(d.bytes, pw)) {
+      try {
+        const out = await unlock(d.bytes, pw);
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(new Blob([out as BlobPart], { type: "application/pdf" }));
+        a.download = d.name.replace(/\.pdf$/i, "") + "-" + (lang === "en" ? "unlocked" : "sin-contrasena") + ".pdf";
+        a.className = "primary download";
+        a.textContent = t(lang, "download");
+        row.textContent = `${d.name} — `;
+        row.appendChild(a);
+        ok++;
+      } catch {
+        row.textContent = `${d.name} — ${t(lang, "bulkUnlockFail")}`;
+      }
+    } else {
+      row.textContent = `${d.name} — ${t(lang, "bulkWrong")}`;
+    }
+    list.appendChild(row);
+    barFill.style.width = `${((i + 1) / docs.length) * 100}%`;
+  }
+  setStatus("bulkDone", { ok, n: docs.length }, ok ? "ok" : "bad");
 }
 
 // ── hashcat hash export ─────────────────────────────────────────────────────

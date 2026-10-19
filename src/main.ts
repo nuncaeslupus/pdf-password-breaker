@@ -14,7 +14,6 @@ const statusText = $<HTMLParagraphElement>("statusText");
 const barFill = $<HTMLElement>("barFill");
 const eta = $<HTMLElement>("eta");
 const result = $<HTMLElement>("result");
-const gpu = $<HTMLDetailsElement>("gpu");
 const hashOut = $<HTMLTextAreaElement>("hashOut");
 const copyHash = $<HTMLButtonElement>("copyHash");
 const copyMsg = $<HTMLElement>("copyMsg");
@@ -41,7 +40,21 @@ function applyLang() {
   renderFileInfo();
   renderStatus();
   renderResult();
-  if (currentHash) hashcatHelp.innerHTML = helpHtml(lang, currentHash);
+  renderGpu();
+}
+
+function renderGpu() {
+  if (currentHash) {
+    hashOut.value = currentHash.hash;
+    copyHash.disabled = false;
+    hashcatHelp.innerHTML = helpHtml(lang, currentHash);
+  } else {
+    hashOut.value = "";
+    hashOut.placeholder = t(lang, "hashPlaceholder");
+    copyHash.disabled = true;
+    hashcatHelp.innerHTML = `<p class="hint"></p>`;
+    hashcatHelp.querySelector("p")!.textContent = t(lang, "gpuNoFile");
+  }
 }
 
 function setLang(next: Lang) {
@@ -133,7 +146,10 @@ async function loadFile(file: File) {
   renderFileInfo();
   runBtn.disabled = !locked;
   if (locked) void showHash(pdfBytes);
-  else gpu.hidden = true;
+  else {
+    currentHash = null;
+    renderGpu();
+  }
 }
 
 function reset() {
@@ -239,20 +255,15 @@ async function showFound(password: string) {
 
 // ── hashcat hash export ─────────────────────────────────────────────────────
 async function showHash(bytes: Uint8Array) {
-  gpu.hidden = true;
-  gpu.open = false;
   copyMsg.textContent = "";
   currentHash = null;
   try {
-    const h = await extractHash(bytes);
-    if (!h) return;
-    currentHash = h;
-    hashOut.value = h.hash;
-    hashcatHelp.innerHTML = helpHtml(lang, h);
-    gpu.hidden = false;
+    currentHash = await extractHash(bytes);
   } catch {
     // Non-standard encryption we can't read — the hint search above still works.
+    currentHash = null;
   }
+  renderGpu();
 }
 
 copyHash.addEventListener("click", async () => {

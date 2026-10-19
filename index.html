@@ -52,25 +52,27 @@
 
       <fieldset>
         <legend data-i18n="legend2">2. Lo que recuerdas</legend>
-        <label>
-          <span data-i18n="wordsLabel">Palabras o contraseñas probables (una por línea)</span>
+        <label class="field">
+          <span class="field-head">
+            <strong data-i18n="wordsLabel">Palabras probables</strong>
+            <small data-i18n="wordsHint">Una por línea. Tal cual y en may./min./Capital.</small>
+          </span>
           <textarea id="words" rows="3" placeholder="factura&#10;MiEmpresa2024"></textarea>
-          <small data-i18n="wordsHint">Se prueban tal cual y en MAYÚSCULAS, minúsculas y Capitalizada.</small>
         </label>
-        <div class="row">
-          <label>
-            <span data-i18n="idsLabel">Números: DNI/NIE, cuenta, teléfono (uno por línea)</span>
-            <textarea id="ids" rows="3" placeholder="12345678Z&#10;600123456"></textarea>
-            <small data-i18n="idsHint"
-              >Útil si recuerdas el número pero no en qué forma estaba.</small
-            >
-          </label>
-          <label>
-            <span data-i18n="datesLabel">Fechas (una por línea)</span>
-            <textarea id="dates" rows="3" placeholder="23/05/1990&#10;1985-12-01"></textarea>
-            <small data-i18n="datesHint">Se prueban en varios formatos.</small>
-          </label>
-        </div>
+        <label class="field">
+          <span class="field-head">
+            <strong data-i18n="idsLabel">Números (DNI, cuenta, tel.)</strong>
+            <small data-i18n="idsHint">Uno por línea. Con y sin letra de control y sin ceros.</small>
+          </span>
+          <textarea id="ids" rows="3" placeholder="12345678Z&#10;600123456"></textarea>
+        </label>
+        <label class="field">
+          <span class="field-head">
+            <strong data-i18n="datesLabel">Fechas</strong>
+            <small data-i18n="datesHint">Una por línea. En varios formatos.</small>
+          </span>
+          <textarea id="dates" rows="3" placeholder="23/05/1990&#10;1985-12-01"></textarea>
+        </label>
         <label class="inline">
           <span data-i18n="sweepLabel">Barrido numérico: probar todos los números de</span>
           <select id="digits">
@@ -86,7 +88,7 @@
         </p>
       </fieldset>
 
-      <details id="gpu" hidden>
+      <details id="gpu">
         <summary data-i18n="gpuSummary">3. ¿Contraseña difícil? Úsala en tu GPU con hashcat</summary>
         <div class="details-body">
           <p class="hint" data-i18n="gpuIntro">
@@ -122,6 +124,14 @@
     </main>
     <footer>
       <span data-i18n="footer">Solo para documentos propios. Gratis, de código abierto y sin servidor.</span>
+      <a href="https://github.com/nuncaeslupus/pdf-password-breaker" target="_blank" rel="noopener">
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+          <path
+            fill="currentColor"
+            d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"
+          /></svg
+        ><span data-i18n="source">Código fuente</span></a
+      >
     </footer>
     <script type="module" src="/src/main.ts"></script>
   </body>

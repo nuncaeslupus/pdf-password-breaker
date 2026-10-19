@@ -161,26 +161,46 @@ select {
   resize: vertical;
 }
 
-.row {
+/* Label + short hint sit to the left of the textarea, so hints never land
+   between two textareas and each field is one compact band. */
+.field {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: auto auto auto;
-  gap: 6px 16px;
+  grid-template-columns: 190px 1fr;
+  align-items: start;
+  gap: 14px;
+  margin-top: 16px;
 }
 
-/* Each label shares the row's three tracks (label / textarea / hint), so the
-   textareas line up even when one label wraps to two lines and the other doesn't. */
-.row > label {
-  display: grid;
-  grid-row: span 3;
-  grid-template-rows: subgrid;
-  gap: 6px;
+.field:first-of-type {
   margin-top: 0;
 }
 
+.field-head {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-top: 6px;
+}
+
+.field-head strong {
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.field-head small {
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
 @media (max-width: 560px) {
-  .row {
+  .field {
     grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .field-head {
+    padding-top: 0;
   }
 }
 
@@ -223,6 +243,11 @@ select {
   display: flex;
   gap: 10px;
   align-items: center;
+}
+
+/* space between the step-3 box and the main search button */
+main > .actions {
+  margin-top: 20px;
 }
 
 button,
@@ -398,8 +423,25 @@ details#gpu[open] > summary::before {
 }
 
 footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 16px;
   padding: 24px 16px 40px;
   color: var(--muted);
   font-size: 0.85rem;
   text-align: center;
+}
+
+footer a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+footer a:hover {
+  text-decoration: underline;
 }

@@ -86,21 +86,6 @@
         </p>
       </fieldset>
 
-      <div class="actions">
-        <button id="run" class="primary" disabled data-i18n="run">Buscar contraseña</button>
-        <button id="cancel" hidden data-i18n="cancel">Cancelar</button>
-      </div>
-
-      <div id="status" class="status" hidden>
-        <div class="bar-row">
-          <div class="bar"><div class="bar-fill" id="barFill"></div></div>
-          <span id="eta" class="eta"></span>
-        </div>
-        <p id="statusText"></p>
-      </div>
-
-      <div id="result" class="result" hidden></div>
-
       <details id="gpu" hidden>
         <summary data-i18n="gpuSummary">3. ¿Contraseña difícil? Úsala en tu GPU con hashcat</summary>
         <div class="details-body">
@@ -119,6 +104,21 @@
           <div id="hashcatHelp" class="help"></div>
         </div>
       </details>
+
+      <div class="actions">
+        <button id="run" class="primary" disabled data-i18n="run">Buscar contraseña</button>
+        <button id="cancel" hidden data-i18n="cancel">Cancelar</button>
+      </div>
+
+      <div id="status" class="status" hidden>
+        <div class="bar-row">
+          <div class="bar"><div class="bar-fill" id="barFill"></div></div>
+          <span id="eta" class="eta"></span>
+        </div>
+        <p id="statusText"></p>
+      </div>
+
+      <div id="result" class="result" hidden></div>
     </main>
     <footer>
       <span data-i18n="footer">Solo para documentos propios. Gratis, de código abierto y sin servidor.</span>

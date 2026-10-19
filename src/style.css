@@ -164,21 +164,23 @@ select {
 .row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  align-items: start;
-  gap: 16px;
+  grid-template-rows: auto auto auto;
+  gap: 6px 16px;
 }
 
-/* Keep the two textareas on the same baseline when one label wraps and the other doesn't. */
-.row > label > span:first-child {
-  min-height: 2.7em;
+/* Each label shares the row's three tracks (label / textarea / hint), so the
+   textareas line up even when one label wraps to two lines and the other doesn't. */
+.row > label {
+  display: grid;
+  grid-row: span 3;
+  grid-template-rows: subgrid;
+  gap: 6px;
+  margin-top: 0;
 }
 
 @media (max-width: 560px) {
   .row {
     grid-template-columns: 1fr;
-  }
-  .row > label > span:first-child {
-    min-height: 0;
   }
 }
 

@@ -1,0 +1,26 @@
+{
+  "name": "pdf-password-breaker",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Recupera la contraseña de un PDF propio probando candidatos. Todo en el navegador, nada se sube.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@cantoo/pdf-lib": "^2.11.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "^6.0.3",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.5"
+  }
+}

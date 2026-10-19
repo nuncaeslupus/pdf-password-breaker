@@ -1,0 +1,57 @@
+import { PDFDocument } from "@cantoo/pdf-lib";
+import { describe, expect, it } from "vitest";
+import { candidates, countCandidates, dateVariants, idVariants, tryPassword, unlock } from "../src/crack";
+
+async function encrypted(userPassword: string): Promise<Uint8Array> {
+  const doc = await PDFDocument.create();
+  doc.addPage([595, 842]);
+  doc.encrypt({ userPassword, ownerPassword: `${userPassword}-owner` });
+  return doc.save();
+}
+
+describe("candidate generation", () => {
+  it("derives date formats and drops duplicates", () => {
+    expect(dateVariants("23/05/1990")).toEqual(["23051990", "230590", "19900523", "900523"]);
+    expect(dateVariants("1990-05-23")).toEqual(["23051990", "230590", "19900523", "900523"]);
+  });
+
+  it("derives id variants without letter and without zeros", () => {
+    expect(idVariants("01234567Z")).toContain("01234567Z");
+    expect(idVariants("01234567Z")).toContain("01234567");
+    expect(idVariants("01234567Z")).toContain("1234567");
+  });
+
+  it("yields words, then ids, then dates, then a numeric sweep, de-duplicated", () => {
+    const list = [...candidates({ words: ["abc", "abc"], ids: [], dates: [], numericDigits: 2 })];
+    expect(list[0]).toBe("abc");
+    expect(list.filter((x) => x === "abc")).toHaveLength(1);
+    expect(list).toContain("00");
+    expect(list).toContain("99");
+  });
+
+  it("counts an upper bound that matches the numeric space", () => {
+    expect(countCandidates({ words: ["a"], ids: [], dates: [], numericDigits: 3 })).toBe(1 + 1000);
+  });
+});
+
+describe("tryPassword against a real encrypted PDF", () => {
+  it("accepts the right password and rejects the wrong one", async () => {
+    const bytes = await encrypted("verano24");
+    expect(await tryPassword(bytes, "verano24")).toBe(true);
+    expect(await tryPassword(bytes, "invierno")).toBe(false);
+  });
+
+  it("finds the password through the candidate loop and unlocks the file", async () => {
+    const bytes = await encrypted("230590");
+    let found: string | undefined;
+    for (const pw of candidates({ words: [], ids: [], dates: ["23/05/1990"], numericDigits: 0 })) {
+      if (await tryPassword(bytes, pw)) {
+        found = pw;
+        break;
+      }
+    }
+    expect(found).toBe("230590");
+    const plain = await unlock(bytes, found!);
+    expect((await PDFDocument.load(plain)).isEncrypted).toBe(false);
+  });
+});

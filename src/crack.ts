@@ -69,12 +69,20 @@ export function idVariants(raw: string): string[] {
   return [...out].filter(Boolean);
 }
 
+/** A word tried as-is and in lower, UPPER and Capitalized case. */
+export function caseVariants(raw: string): string[] {
+  const s = raw.trim();
+  if (!s) return [];
+  const cap = s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+  return [...new Set([s, s.toLowerCase(), s.toUpperCase(), cap])];
+}
+
 /** Ordered, de-duplicated candidates, most-likely first; numeric sweep last. */
 export function* candidates(h: Hints): Generator<string> {
   const seen = new Set<string>();
   const fresh = (v: string) => (v && !seen.has(v) ? (seen.add(v), true) : false);
 
-  for (const w of h.words) if (fresh(w.trim())) yield w.trim();
+  for (const w of h.words) for (const v of caseVariants(w)) if (fresh(v)) yield v;
   for (const id of h.ids) for (const v of idVariants(id)) if (fresh(v)) yield v;
   for (const dt of h.dates) for (const v of dateVariants(dt)) if (fresh(v)) yield v;
 

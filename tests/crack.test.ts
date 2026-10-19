@@ -1,6 +1,6 @@
 import { PDFDocument } from "@cantoo/pdf-lib";
 import { describe, expect, it } from "vitest";
-import { candidates, countCandidates, dateVariants, dniLetter, extractHash, idVariants, tryPassword, unlock } from "../src/crack";
+import { candidates, caseVariants, countCandidates, dateVariants, dniLetter, extractHash, idVariants, tryPassword, unlock } from "../src/crack";
 
 async function encrypted(userPassword: string): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
@@ -29,16 +29,23 @@ describe("candidate generation", () => {
     expect(idVariants("12345678")).toContain("12345678z");
   });
 
-  it("yields words, then ids, then dates, then a numeric sweep, de-duplicated", () => {
+  it("derives case variants of a word", () => {
+    expect(caseVariants("miClave")).toEqual(["miClave", "miclave", "MICLAVE", "Miclave"]);
+    expect(caseVariants("1234")).toEqual(["1234"]); // nothing to case-fold
+  });
+
+  it("yields words (with case variants), then ids, then dates, then a numeric sweep, de-duplicated", () => {
     const list = [...candidates({ words: ["abc", "abc"], ids: [], dates: [], numericDigits: 2 })];
     expect(list[0]).toBe("abc");
     expect(list.filter((x) => x === "abc")).toHaveLength(1);
+    expect(list).toContain("ABC");
     expect(list).toContain("00");
     expect(list).toContain("99");
   });
 
   it("counts an upper bound that matches the numeric space", () => {
-    expect(countCandidates({ words: ["a"], ids: [], dates: [], numericDigits: 3 })).toBe(1 + 1000);
+    // "ab" → ab, AB, Ab (lowercase dup dropped) = 3 variants, plus the 1000 numbers.
+    expect(countCandidates({ words: ["ab"], ids: [], dates: [], numericDigits: 3 })).toBe(3 + 1000);
   });
 });
 

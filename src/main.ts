@@ -1,4 +1,5 @@
 import { countCandidates, extractHash, tryPassword, unlock, type Hints, type PdfHash } from "./crack";
+import { HTML_KEYS, helpHtml, t, type Lang } from "./i18n";
 import type { OutMsg, StartMsg } from "./worker";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -13,15 +14,93 @@ const statusText = $<HTMLParagraphElement>("statusText");
 const barFill = $<HTMLElement>("barFill");
 const eta = $<HTMLElement>("eta");
 const result = $<HTMLElement>("result");
-const gpu = $<HTMLElement>("gpu");
+const gpu = $<HTMLDetailsElement>("gpu");
 const hashOut = $<HTMLTextAreaElement>("hashOut");
 const copyHash = $<HTMLButtonElement>("copyHash");
 const copyMsg = $<HTMLElement>("copyMsg");
 const hashcatHelp = $<HTMLElement>("hashcatHelp");
 
+// ── language ───────────────────────────────────────────────────────────────
+let lang: Lang = ((): Lang => {
+  const saved = localStorage.getItem("lang");
+  if (saved === "es" || saved === "en") return saved;
+  return navigator.language.startsWith("en") ? "en" : "es";
+})();
+
+function applyLang() {
+  document.documentElement.lang = lang;
+  document.title = t(lang, "title");
+  document.querySelectorAll<HTMLElement>("[data-i18n]").forEach((el) => {
+    const key = el.dataset.i18n!;
+    if (HTML_KEYS.has(key)) el.innerHTML = t(lang, key);
+    else el.textContent = t(lang, key);
+  });
+  document.querySelectorAll<HTMLButtonElement>(".langs button").forEach((b) => {
+    b.classList.toggle("active", b.dataset.lang === lang);
+  });
+  renderFileInfo();
+  renderStatus();
+  renderResult();
+  if (currentHash) hashcatHelp.innerHTML = helpHtml(lang, currentHash);
+}
+
+function setLang(next: Lang) {
+  lang = next;
+  localStorage.setItem("lang", next);
+  applyLang();
+}
+
+document.querySelectorAll<HTMLButtonElement>(".langs button").forEach((b) =>
+  b.addEventListener("click", () => setLang(b.dataset.lang as Lang)),
+);
+
+// ── render state (so a language switch re-translates what's on screen) ───────
+let fileState: { name: string; locked: boolean } | null = null;
+let statusState: { key: string; vars: Record<string, string | number>; tone: string } | null = null;
+let resultState: { password: string; blobUrl: string | null } | null = null;
+let currentHash: PdfHash | null = null;
+
+function renderFileInfo() {
+  if (!fileState) return;
+  fileInfo.textContent = t(lang, fileState.locked ? "fileLocked" : "fileOpen", { name: fileState.name });
+  fileInfo.classList.toggle("ok", !fileState.locked);
+}
+
+function setStatus(key: string, vars: Record<string, string | number>, tone: "info" | "ok" | "bad") {
+  statusState = { key, vars, tone };
+  renderStatus();
+}
+
+function renderStatus() {
+  if (!statusState) return;
+  statusText.textContent = t(lang, statusState.key, statusState.vars);
+  statusText.classList.toggle("ok", statusState.tone === "ok");
+  statusText.classList.toggle("bad", statusState.tone === "bad");
+}
+
+function renderResult() {
+  if (!resultState) return;
+  result.innerHTML = `<p class="found"><span class="found-label"></span> <code></code></p>`;
+  result.querySelector(".found-label")!.textContent = t(lang, "passwordLabel");
+  (result.querySelector("code") as HTMLElement).textContent = resultState.password;
+  if (resultState.blobUrl) {
+    const a = document.createElement("a");
+    a.href = resultState.blobUrl;
+    a.download = fileName.replace(/\.pdf$/i, "") + "-" + (lang === "en" ? "unlocked" : "sin-contrasena") + ".pdf";
+    a.className = "primary download";
+    a.textContent = t(lang, "download");
+    result.appendChild(a);
+  } else {
+    const p = document.createElement("p");
+    p.className = "hint";
+    p.textContent = t(lang, "unlockFail");
+    result.appendChild(p);
+  }
+}
+
+// ── ETA ──────────────────────────────────────────────────────────────────────
 let startedAt = 0;
 
-/** "45 s" / "3 min" / "1 h 12 min", or "" when it can't be estimated yet. */
 function fmtEta(sec: number): string {
   if (!isFinite(sec) || sec < 0) return "";
   if (sec < 1) return "<1 s";
@@ -32,6 +111,7 @@ function fmtEta(sec: number): string {
   return `${Math.floor(m / 60)} h ${m % 60} min`;
 }
 
+// ── file handling ─────────────────────────────────────────────────────────────
 let pdfBytes: Uint8Array | null = null;
 let fileName = "documento.pdf";
 
@@ -47,74 +127,21 @@ async function loadFile(file: File) {
   fileName = file.name;
   pdfBytes = new Uint8Array(await file.arrayBuffer());
   reset();
-  // A PDF that opens with an empty password isn't user-locked — nothing to recover.
   const locked = !(await tryPassword(pdfBytes, ""));
+  fileState = { name: file.name, locked };
   fileInfo.hidden = false;
-  if (locked) {
-    fileInfo.textContent = `${file.name} · protegido con contraseña`;
-    fileInfo.classList.remove("ok");
-    runBtn.disabled = false;
-    void showHash(pdfBytes);
-  } else {
-    fileInfo.textContent = `${file.name} · este PDF no pide contraseña para abrirse`;
-    fileInfo.classList.add("ok");
-    runBtn.disabled = true;
-    gpu.hidden = true;
-  }
+  renderFileInfo();
+  runBtn.disabled = !locked;
+  if (locked) void showHash(pdfBytes);
+  else gpu.hidden = true;
 }
-
-/** The exact hashcat command lines for this file's encryption. */
-function helpFor(h: PdfHash): string {
-  const slow = h.mode >= 10600; // AES-256 is slow even on a GPU
-  const speed = slow
-    ? "Es cifrado AES-256: lento incluso en GPU, así que céntrate en máscaras cortas (fechas, PIN)."
-    : "Es cifrado RC4/antiguo: muy rápido en GPU, millones de contraseñas por segundo.";
-  const cmd = (a: string) => `<code>hashcat -m ${h.mode} hash.txt ${a}</code>`;
-  return `
-    <p>Tu PDF usa <strong>${h.modeLabel}</strong> → modo <code>-m ${h.mode}</code> de hashcat. ${speed}</p>
-    <ol>
-      <li>Pulsa <strong>Copiar hash</strong> y pégalo en un archivo de texto llamado <code>hash.txt</code>.</li>
-      <li>Instala hashcat desde <a href="https://hashcat.net/hashcat/" target="_blank" rel="noopener">hashcat.net</a> (Windows, macOS o Linux).</li>
-      <li>En una terminal, en la carpeta del <code>hash.txt</code>, prueba una de estas:</li>
-    </ol>
-    <ul>
-      <li>Solo dígitos, 6 cifras (tipo PIN o fecha corta): ${cmd("-a 3 ?d?d?d?d?d?d")}</li>
-      <li>Fecha completa ddmmaaaa (8 cifras): ${cmd("-a 3 ?d?d?d?d?d?d?d?d")}</li>
-      <li>DNI de 8 cifras + letra: ${cmd("-a 3 ?d?d?d?d?d?d?d?d?u")}</li>
-      <li>Con una lista de palabras (diccionario.txt): ${cmd("diccionario.txt")}</li>
-    </ul>
-    <p>Cuando termine, vuelve a verla con <code>hashcat -m ${h.mode} hash.txt --show</code>. En <code>-a 3</code>, <code>?d</code> = un dígito y <code>?u</code> = una mayúscula.</p>
-  `;
-}
-
-async function showHash(bytes: Uint8Array) {
-  gpu.hidden = true;
-  copyMsg.textContent = "";
-  try {
-    const h = await extractHash(bytes);
-    if (!h) return;
-    hashOut.value = h.hash;
-    hashcatHelp.innerHTML = helpFor(h);
-    gpu.hidden = false;
-  } catch {
-    // Non-standard encryption we can't read — the hint-based search above still works.
-  }
-}
-
-copyHash.addEventListener("click", async () => {
-  try {
-    await navigator.clipboard.writeText(hashOut.value);
-    copyMsg.textContent = "Copiado.";
-  } catch {
-    hashOut.select();
-    copyMsg.textContent = "Selecciónalo y copia con Ctrl+C.";
-  }
-});
 
 function reset() {
   statusBox.hidden = true;
+  statusState = null;
   result.hidden = true;
   result.innerHTML = "";
+  resultState = null;
 }
 
 fileInput.addEventListener("change", () => {
@@ -132,6 +159,7 @@ drop.addEventListener("drop", (e) => {
   if (f) void loadFile(f);
 });
 
+// ── search ────────────────────────────────────────────────────────────────────
 runBtn.addEventListener("click", () => {
   if (!pdfBytes) return;
   const hints: Hints = {
@@ -141,34 +169,33 @@ runBtn.addEventListener("click", () => {
     numericDigits: Number($<HTMLSelectElement>("digits").value),
   };
   const total = countCandidates(hints);
-  if (total === 0) {
-    statusBox.hidden = false;
-    barFill.style.width = "0%";
-    statusText.textContent = "No hay candidatos: añade alguna pista o activa el barrido numérico.";
-    return;
-  }
   reset();
   statusBox.hidden = false;
+  if (total === 0) {
+    barFill.style.width = "0%";
+    setStatus("noCandidates", {}, "bad");
+    return;
+  }
   runBtn.hidden = true;
   cancelBtn.hidden = false;
   eta.textContent = "";
+  barFill.style.width = "0%";
   startedAt = performance.now();
-  statusText.textContent = `Probando ${total.toLocaleString("es")} candidato(s)…`;
-  // Copy the bytes for the worker so the originals stay here for unlocking.
+  setStatus("probing", { n: total.toLocaleString(lang) }, "info");
   worker.postMessage({ bytes: pdfBytes.slice(), hints } satisfies StartMsg);
   (worker as Worker & { _total?: number })._total = total;
 });
 
 cancelBtn.addEventListener("click", () => {
   worker.postMessage("cancel");
-  finish("Búsqueda cancelada.");
+  finish();
+  setStatus("cancelled", {}, "info");
 });
 
-function finish(msg: string) {
+function finish() {
   runBtn.hidden = false;
   cancelBtn.hidden = true;
   eta.textContent = "";
-  if (msg) statusText.textContent = msg;
 }
 
 worker.addEventListener("message", (e: MessageEvent<OutMsg>) => {
@@ -177,42 +204,65 @@ worker.addEventListener("message", (e: MessageEvent<OutMsg>) => {
   if (m.type === "progress") {
     barFill.style.width = `${Math.min(100, (m.tried / total) * 100)}%`;
     const elapsed = (performance.now() - startedAt) / 1000;
-    const remaining = ((total - m.tried) * elapsed) / m.tried;
-    const left = fmtEta(remaining);
+    const left = fmtEta(((total - m.tried) * elapsed) / m.tried);
     eta.textContent = left ? `~${left}` : "";
-    statusText.textContent = `Probados ${m.tried.toLocaleString("es")} de ${total.toLocaleString("es")} · último: ${m.current}`;
+    setStatus("tried", { tried: m.tried.toLocaleString(lang), total: total.toLocaleString(lang), cur: m.current }, "info");
   } else if (m.type === "found") {
     barFill.style.width = "100%";
-    eta.textContent = "";
-    finish(`Contraseña encontrada tras ${m.tried.toLocaleString("es")} intento(s).`);
+    finish();
+    setStatus("found", { n: m.tried.toLocaleString(lang) }, "ok");
     void showFound(m.password);
   } else if (m.type === "exhausted") {
-    eta.textContent = "";
     barFill.style.width = "100%";
-    finish(`Sin suerte: ninguno de los ${m.tried.toLocaleString("es")} candidatos abrió el PDF.`);
+    finish();
+    setStatus("exhausted", { n: m.tried.toLocaleString(lang) }, "bad");
   } else if (m.type === "error") {
-    finish(`Error: ${m.message}`);
+    finish();
+    setStatus("error", { msg: m.message }, "bad");
   }
 });
 
 async function showFound(password: string) {
   result.hidden = false;
-  result.innerHTML = `<p class="found">Contraseña: <code></code></p>`;
-  (result.querySelector("code") as HTMLElement).textContent = password;
-  if (!pdfBytes) return;
+  let blobUrl: string | null = null;
+  if (pdfBytes) {
+    try {
+      const out = await unlock(pdfBytes, password);
+      blobUrl = URL.createObjectURL(new Blob([out as BlobPart], { type: "application/pdf" }));
+    } catch {
+      blobUrl = null;
+    }
+  }
+  resultState = { password, blobUrl };
+  renderResult();
+}
+
+// ── hashcat hash export ─────────────────────────────────────────────────────
+async function showHash(bytes: Uint8Array) {
+  gpu.hidden = true;
+  gpu.open = false;
+  copyMsg.textContent = "";
+  currentHash = null;
   try {
-    const out = await unlock(pdfBytes, password);
-    const url = URL.createObjectURL(new Blob([out as BlobPart], { type: "application/pdf" }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = fileName.replace(/\.pdf$/i, "") + "-sin-contrasena.pdf";
-    a.className = "primary download";
-    a.textContent = "Descargar PDF sin contraseña";
-    result.appendChild(a);
+    const h = await extractHash(bytes);
+    if (!h) return;
+    currentHash = h;
+    hashOut.value = h.hash;
+    hashcatHelp.innerHTML = helpHtml(lang, h);
+    gpu.hidden = false;
   } catch {
-    const p = document.createElement("p");
-    p.className = "hint";
-    p.textContent = "No se pudo generar una copia sin contraseña, pero la contraseña de arriba es válida.";
-    result.appendChild(p);
+    // Non-standard encryption we can't read — the hint search above still works.
   }
 }
+
+copyHash.addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(hashOut.value);
+    copyMsg.textContent = t(lang, "copied");
+  } catch {
+    hashOut.select();
+    copyMsg.textContent = t(lang, "copyManual");
+  }
+});
+
+applyLang();

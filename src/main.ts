@@ -7,6 +7,7 @@ const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as 
 const fileInput = $<HTMLInputElement>("file");
 const drop = $<HTMLElement>("drop");
 const fileInfo = $<HTMLParagraphElement>("fileInfo");
+const remember = $<HTMLFieldSetElement>("remember");
 const runBtn = $<HTMLButtonElement>("run");
 const cancelBtn = $<HTMLButtonElement>("cancel");
 const statusBox = $<HTMLElement>("status");
@@ -76,6 +77,7 @@ let currentHash: PdfHash | null = null;
 function renderFileInfo() {
   if (!fileState) return;
   fileInfo.textContent = t(lang, fileState.locked ? "fileLocked" : "fileOpen", { name: fileState.name });
+  fileInfo.classList.toggle("locked", fileState.locked);
   fileInfo.classList.toggle("ok", !fileState.locked);
 }
 
@@ -144,6 +146,7 @@ async function loadFile(file: File) {
   fileState = { name: file.name, locked };
   fileInfo.hidden = false;
   renderFileInfo();
+  remember.disabled = !locked;
   runBtn.disabled = !locked;
   if (locked) void showHash(pdfBytes);
   else {

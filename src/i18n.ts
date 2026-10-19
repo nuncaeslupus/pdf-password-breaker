@@ -15,11 +15,11 @@ export const STRINGS: Record<Lang, Dict> = {
     drop: "Arrastra el PDF aquí o haz clic para elegirlo",
     legend2: "2. Lo que recuerdas",
     wordsLabel: "Palabras probables",
-    wordsHint: "Una por línea. Tal cual y en may./min./Capital.",
+    wordsHint: "Una por línea. Se probará tal cual y en may./min./Capital.",
     idsLabel: "Números (DNI, cuenta, tel.)",
-    idsHint: "Uno por línea. Con y sin letra de control y sin ceros.",
+    idsHint: "Uno por línea. Se probará con y sin letra de control y sin ceros.",
     datesLabel: "Fechas",
-    datesHint: "Una por línea. En varios formatos.",
+    datesHint: "Una por línea. Se probará en varios formatos.",
     sweepLabel: "Barrido numérico: probar todos los números de",
     sweepOff: "— (desactivado)",
     sweep3: "3 cifras",
@@ -60,11 +60,11 @@ export const STRINGS: Record<Lang, Dict> = {
     drop: "Drag your PDF here or click to choose it",
     legend2: "2. What you remember",
     wordsLabel: "Likely words",
-    wordsHint: "One per line. As-is and in UPPER/lower/Capital.",
+    wordsHint: "One per line. Tried as-is and in UPPER/lower/Capital.",
     idsLabel: "Numbers (ID, account, phone)",
-    idsHint: "One per line. With and without check letter and zeros.",
+    idsHint: "One per line. Tried with and without check letter and zeros.",
     datesLabel: "Dates",
-    datesHint: "One per line. In several formats.",
+    datesHint: "One per line. Tried in several formats.",
     sweepLabel: "Numeric sweep: try every number of",
     sweepOff: "— (off)",
     sweep3: "3 digits",
@@ -115,7 +115,7 @@ export function helpHtml(lang: Lang, h: PdfHash): string {
       ? "It's AES-256: slow even on a GPU, so focus on short masks (dates, PIN)."
       : "It's RC4/legacy: very fast on a GPU, millions of passwords per second.";
     return `
-      <p>Your PDF uses <strong>${h.modeLabel}</strong> → hashcat mode <code>-m ${h.mode}</code>. ${speed}</p>
+      <div class="callout"><span class="callout-tag">Info</span><p>Your PDF uses <strong>${h.modeLabel}</strong> → hashcat mode <code>-m ${h.mode}</code>. ${speed}</p></div>
       <ol>
         <li>Click <strong>Copy hash</strong> and paste it into a text file named <code>hash.txt</code>.</li>
         <li>Install hashcat from <a href="https://hashcat.net/hashcat/" target="_blank" rel="noopener">hashcat.net</a> (Windows, macOS or Linux).</li>
@@ -134,7 +134,7 @@ export function helpHtml(lang: Lang, h: PdfHash): string {
     ? "Es cifrado AES-256: lento incluso en GPU, así que céntrate en máscaras cortas (fechas, PIN)."
     : "Es cifrado RC4/antiguo: muy rápido en GPU, millones de contraseñas por segundo.";
   return `
-    <p>Tu PDF usa <strong>${h.modeLabel}</strong> → modo <code>-m ${h.mode}</code> de hashcat. ${speed}</p>
+    <div class="callout"><span class="callout-tag">Info</span><p>Tu PDF usa <strong>${h.modeLabel}</strong> → modo <code>-m ${h.mode}</code> de hashcat. ${speed}</p></div>
     <ol>
       <li>Pulsa <strong>Copiar hash</strong> y pégalo en un archivo de texto llamado <code>hash.txt</code>.</li>
       <li>Instala hashcat desde <a href="https://hashcat.net/hashcat/" target="_blank" rel="noopener">hashcat.net</a> (Windows, macOS o Linux).</li>

@@ -239,6 +239,39 @@ select {
   color: var(--ok);
 }
 
+.file-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.file-info::before {
+  font-weight: 400;
+}
+
+.file-info.ok {
+  color: var(--ok);
+}
+
+.file-info.ok::before {
+  content: "✓";
+}
+
+.file-info.locked {
+  color: var(--bad);
+}
+
+.file-info.locked::before {
+  content: "🔒";
+}
+
+fieldset:disabled {
+  opacity: 0.55;
+}
+
 .actions {
   display: flex;
   gap: 10px;
@@ -392,6 +425,28 @@ details#gpu[open] > summary::before {
   margin-top: 8px;
   font-size: 0.9rem;
   line-height: 1.6;
+}
+
+.help .callout {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+}
+
+.help .callout p {
+  margin: 0;
+}
+
+.callout-tag {
+  display: inline-block;
+  margin-bottom: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--accent);
 }
 
 .help ol,

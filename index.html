@@ -47,31 +47,31 @@
           <span data-i18n="drop">Arrastra el PDF aquí o haz clic para elegirlo</span>
           <input type="file" id="file" accept="application/pdf" />
         </label>
-        <p class="hint" id="fileInfo" hidden></p>
+        <p class="file-info" id="fileInfo" hidden></p>
       </fieldset>
 
-      <fieldset>
+      <fieldset id="remember" disabled>
         <legend data-i18n="legend2">2. Lo que recuerdas</legend>
         <label class="field">
           <span class="field-head">
             <strong data-i18n="wordsLabel">Palabras probables</strong>
-            <small data-i18n="wordsHint">Una por línea. Tal cual y en may./min./Capital.</small>
+            <small data-i18n="wordsHint">Una por línea. Se probará tal cual y en may./min./Capital.</small>
           </span>
-          <textarea id="words" rows="3" placeholder="factura&#10;MiEmpresa2024"></textarea>
+          <textarea id="words" rows="2" placeholder="factura&#10;MiEmpresa2024"></textarea>
         </label>
         <label class="field">
           <span class="field-head">
             <strong data-i18n="idsLabel">Números (DNI, cuenta, tel.)</strong>
-            <small data-i18n="idsHint">Uno por línea. Con y sin letra de control y sin ceros.</small>
+            <small data-i18n="idsHint">Uno por línea. Se probará con y sin letra de control y sin ceros.</small>
           </span>
-          <textarea id="ids" rows="3" placeholder="12345678Z&#10;600123456"></textarea>
+          <textarea id="ids" rows="2" placeholder="12345678Z&#10;600123456"></textarea>
         </label>
         <label class="field">
           <span class="field-head">
             <strong data-i18n="datesLabel">Fechas</strong>
-            <small data-i18n="datesHint">Una por línea. En varios formatos.</small>
+            <small data-i18n="datesHint">Una por línea. Se probará en varios formatos.</small>
           </span>
-          <textarea id="dates" rows="3" placeholder="23/05/1990&#10;1985-12-01"></textarea>
+          <textarea id="dates" rows="2" placeholder="23/05/1990&#10;1985-12-01"></textarea>
         </label>
         <label class="inline">
           <span data-i18n="sweepLabel">Barrido numérico: probar todos los números de</span>

@@ -165,7 +165,7 @@ select {
    between two textareas and each field is one compact band. */
 .field {
   display: grid;
-  grid-template-columns: 190px 1fr;
+  grid-template-columns: 1fr 240px;
   align-items: start;
   gap: 14px;
   margin-top: 16px;

@@ -27,6 +27,11 @@
   box-sizing: border-box;
 }
 
+/* `hidden` must win over class display rules (e.g. .actions { display: flex }). */
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
   background: var(--bg);
@@ -395,6 +400,34 @@ a.download {
   display: inline-block;
 }
 
+.choices {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.choice {
+  text-align: left;
+  padding: 12px 14px;
+}
+
+.choice.active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  font-weight: 600;
+}
+
+.sub {
+  margin: 22px 0 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.sub:first-child {
+  margin-top: 0;
+}
+
 .bulk-row {
   display: flex;
   flex-wrap: wrap;
@@ -402,6 +435,11 @@ a.download {
   gap: 8px;
   margin: 8px 0;
   font-size: 0.95rem;
+}
+
+.bulk-row .bad {
+  color: var(--bad);
+  font-weight: 600;
 }
 
 details.step {

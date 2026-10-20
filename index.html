@@ -4,10 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
-    <title>Recuperar contraseña de un PDF</title>
+    <title>Recuperar y quitar contraseñas de PDF</title>
     <meta
       name="description"
-      content="Recupera la contraseña de un PDF tuyo probando candidatos que tú defines. Todo en tu navegador, nada se sube. / Recover a PDF's password in your browser; nothing is uploaded."
+      content="Recupera la contraseña de un PDF tuyo, o quita la contraseña común de varios a la vez. Todo en tu navegador, nada se sube. / Recover a PDF's password, or strip a shared password from several at once. In your browser; nothing is uploaded."
     />
     <link rel="stylesheet" href="/src/style.css" />
   </head>
@@ -28,7 +28,7 @@
             <circle class="hole" cx="24" cy="30" r="3" />
             <rect class="hole" x="23" y="31" width="2" height="6" rx="1" />
           </svg>
-          <h1 data-i18n="title">Recuperar contraseña de un PDF</h1>
+          <h1 data-i18n="title">Recuperar y quitar contraseñas de PDF</h1>
         </div>
         <div class="langs" role="group" aria-label="Language">
           <button type="button" data-lang="es">ES</button>
@@ -50,20 +50,36 @@
         <p class="file-info" id="fileInfo" hidden></p>
       </fieldset>
 
-      <fieldset id="knownBox" disabled>
-        <legend data-i18n="knownLegend">¿Ya la conoces?</legend>
+      <fieldset id="chooser" hidden>
+        <legend data-i18n="chooserLegend">¿Qué quieres hacer?</legend>
+        <div class="choices">
+          <button type="button" class="choice" id="chooseKnow" data-i18n="chooseKnow">
+            Sé la contraseña y quiero quitarla
+          </button>
+          <button type="button" class="choice" id="chooseRecover" data-i18n="chooseRecover">
+            No sé la contraseña y quiero recuperarla
+          </button>
+        </div>
+        <p class="hint" id="chooserNote" hidden data-i18n="chooserMultiNote">
+          Con varios archivos solo se puede quitar una contraseña conocida; recuperar es de un archivo.
+        </p>
+      </fieldset>
+
+      <fieldset id="knownBox" hidden disabled>
+        <legend id="knownLegend" data-i18n="removeLegend">Quitar la contraseña</legend>
         <label class="field">
           <span class="field-head">
             <strong data-i18n="knownLabel">Contraseña</strong>
-            <small data-i18n="knownHint">Si la recuerdas, escríbela y pulsa Buscar para quitarla.</small>
+            <small id="knownHint" data-i18n="removeHint">Escríbela y pulsa Quitar para descargar el PDF sin ella.</small>
           </span>
           <input type="text" id="known" autocomplete="off" placeholder="MiContraseña" />
         </label>
       </fieldset>
 
-      <details id="step2" class="step">
-        <summary data-i18n="legend2">2. Lo que recuerdas</summary>
+      <details id="recover" class="step" hidden>
+        <summary data-i18n="recoverSummary">Pistas para probar</summary>
         <div class="details-body">
+          <h3 class="sub" data-i18n="rememberSub">Lo que recuerdas</h3>
           <fieldset id="remember" class="bare" disabled>
             <label class="field">
               <span class="field-head">
@@ -87,12 +103,7 @@
               <textarea id="dates" rows="2" placeholder="23/05/1990&#10;1985-12-01"></textarea>
             </label>
           </fieldset>
-        </div>
-      </details>
-
-      <details id="step3" class="step">
-        <summary data-i18n="legend3">3. Fuerza bruta</summary>
-        <div class="details-body">
+          <h3 class="sub" data-i18n="bruteSub">Fuerza bruta</h3>
           <fieldset id="brute" class="bare" disabled>
             <p class="hint" data-i18n="bruteIntro">
               Prueba todas las combinaciones de un conjunto de caracteres y una longitud exacta.
@@ -136,8 +147,8 @@
         </div>
       </details>
 
-      <details id="gpu" class="step">
-        <summary data-i18n="gpuSummary">4. ¿Contraseña difícil? Úsala en tu GPU con hashcat</summary>
+      <details id="gpu" class="step" hidden>
+        <summary data-i18n="gpuSummary">¿Contraseña difícil? Úsala en tu GPU con hashcat</summary>
         <div class="details-body">
           <p class="hint" data-i18n="gpuIntro">
             Si las pistas no bastan, tu tarjeta gráfica prueba millones de contraseñas por segundo
@@ -155,7 +166,7 @@
         </div>
       </details>
 
-      <div class="actions">
+      <div class="actions" id="runActions" hidden>
         <button id="run" class="primary" disabled data-i18n="run">Buscar contraseña</button>
         <button id="cancel" hidden data-i18n="cancel">Cancelar</button>
       </div>

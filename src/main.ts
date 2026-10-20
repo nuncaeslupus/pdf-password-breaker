@@ -9,6 +9,15 @@ const drop = $<HTMLElement>("drop");
 const fileInfo = $<HTMLParagraphElement>("fileInfo");
 const known = $<HTMLInputElement>("known");
 const knownBox = $<HTMLFieldSetElement>("knownBox");
+const knownLegend = $<HTMLElement>("knownLegend");
+const knownHint = $<HTMLElement>("knownHint");
+const recover = $<HTMLDetailsElement>("recover");
+const gpu = $<HTMLDetailsElement>("gpu");
+const runActions = $<HTMLElement>("runActions");
+const chooser = $<HTMLFieldSetElement>("chooser");
+const chooseKnow = $<HTMLButtonElement>("chooseKnow");
+const chooseRecover = $<HTMLButtonElement>("chooseRecover");
+const chooserNote = $<HTMLElement>("chooserNote");
 const remember = $<HTMLFieldSetElement>("remember");
 const brute = $<HTMLFieldSetElement>("brute");
 const bruteChars = $<HTMLSelectElement>("bruteChars");
@@ -49,6 +58,35 @@ function applyLang() {
   renderResult();
   renderGpu();
   renderBruteCount();
+  renderMode();
+}
+
+// Nothing shows until a password-protected file is loaded. Then the chooser asks
+// remove-vs-recover. Recovery searches one file, so with several files only the
+// remove option is offered (recover disabled, with a note). Removal → the known
+// box; recovery → the hints step + hashcat.
+function renderMode() {
+  const multi = docs.length > 1;
+  const locked = docs.some((d) => d.locked);
+
+  chooseRecover.disabled = multi;
+  chooserNote.hidden = !(locked && multi);
+  if (multi && locked) intent = "remove"; // only option with several files; preselect it
+
+  chooser.hidden = !locked;
+  chooseKnow.classList.toggle("active", intent === "remove");
+  chooseRecover.classList.toggle("active", intent === "recover");
+
+  const showRemove = locked && intent === "remove";
+  const showRecover = locked && !multi && intent === "recover";
+  knownBox.hidden = !showRemove;
+  recover.hidden = !showRecover;
+  gpu.hidden = !showRecover;
+  runActions.hidden = !(showRemove || showRecover);
+
+  knownLegend.textContent = t(lang, multi ? "batchLegend" : "removeLegend");
+  knownHint.textContent = t(lang, multi ? "batchHint" : "removeHint");
+  runBtn.textContent = t(lang, multi ? "batchRun" : showRecover ? "run" : "removeRun");
 }
 
 function renderBruteCount() {
@@ -88,6 +126,16 @@ let fileState: { name: string; locked: boolean; count?: number; lockedCount?: nu
 let statusState: { key: string; vars: Record<string, string | number>; tone: string } | null = null;
 let resultState: { password: string; blobUrl: string | null } | null = null;
 let currentHash: PdfHash | null = null;
+let intent: "remove" | "recover" | null = null; // single-file: chosen in the chooser
+
+chooseKnow.addEventListener("click", () => {
+  intent = "remove";
+  renderMode();
+});
+chooseRecover.addEventListener("click", () => {
+  intent = "recover";
+  renderMode();
+});
 
 function renderFileInfo() {
   if (!fileState) return;
@@ -160,6 +208,7 @@ const lines = (id: string) =>
 
 async function loadFiles(files: FileList | File[]) {
   reset();
+  intent = null;
   docs = [];
   for (const file of Array.from(files)) {
     const bytes = new Uint8Array(await file.arrayBuffer());
@@ -178,6 +227,7 @@ async function loadFiles(files: FileList | File[]) {
   remember.disabled = multi || lockedCount === 0; // hint search works on one file only
   brute.disabled = multi || lockedCount === 0;
   runBtn.disabled = lockedCount === 0;
+  renderMode();
 
   if (!multi && docs[0].locked) void showHash(docs[0].bytes);
   else {
@@ -211,7 +261,9 @@ drop.addEventListener("drop", (e) => {
 
 // ── search ────────────────────────────────────────────────────────────────────
 runBtn.addEventListener("click", () => {
-  if (docs.length > 1) {
+  // "I know the password" → remove it directly (no candidate search, no "found!").
+  // Works for one file or several sharing a password.
+  if (intent === "remove") {
     void bulkRemove();
     return;
   }
@@ -239,6 +291,13 @@ runBtn.addEventListener("click", () => {
   setStatus("probing", { n: total.toLocaleString(lang) }, "info");
   worker.postMessage({ bytes: pdfBytes.slice(), hints } satisfies StartMsg);
   (worker as Worker & { _total?: number })._total = total;
+});
+
+known.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !runBtn.disabled) {
+    e.preventDefault();
+    runBtn.click();
+  }
 });
 
 cancelBtn.addEventListener("click", () => {
@@ -295,6 +354,13 @@ async function showFound(password: string) {
 // Bulk: one shared known password across every loaded file. No search, just
 // tryPassword + unlock per file. ponytail: results aren't re-translated on a
 // language switch (one-shot action list), unlike the single-file renderResult.
+const badSpan = (text: string) => {
+  const s = document.createElement("span");
+  s.className = "bad";
+  s.textContent = text;
+  return s;
+};
+
 async function bulkRemove() {
   const pw = known.value.trim();
   reset();
@@ -328,10 +394,10 @@ async function bulkRemove() {
         row.appendChild(a);
         ok++;
       } catch {
-        row.textContent = `${d.name} — ${t(lang, "bulkUnlockFail")}`;
+        row.append(`${d.name} — `, badSpan(t(lang, "bulkUnlockFail")));
       }
     } else {
-      row.textContent = `${d.name} — ${t(lang, "bulkWrong")}`;
+      row.append(`${d.name} — `, badSpan(t(lang, "bulkWrong")));
     }
     list.appendChild(row);
     barFill.style.width = `${((i + 1) / docs.length) * 100}%`;

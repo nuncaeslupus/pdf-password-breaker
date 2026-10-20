@@ -193,6 +193,7 @@ function renderResult() {
 
 // ── ETA ──────────────────────────────────────────────────────────────────────
 let startedAt = 0;
+let searching = false; // true while the worker is sweeping; gates late messages
 
 function fmtEta(sec: number): string {
   if (!isFinite(sec) || sec < 0) return "";
@@ -281,7 +282,9 @@ runBtn.addEventListener("click", () => {
   }
   if (!pdfBytes) return;
   const hints: Hints = {
-    words: [known.value.trim(), ...lines("words")].filter(Boolean),
+    // `known` is the remove-path box (hidden here); don't let a stale value from
+    // a previous "I know the password" leak in as a free candidate.
+    words: lines("words"),
     ids: lines("ids"),
     dates: lines("dates"),
     sweepChars: bruteChars.value,
@@ -300,6 +303,7 @@ runBtn.addEventListener("click", () => {
   eta.textContent = "";
   barFill.style.width = "0%";
   startedAt = performance.now();
+  searching = true;
   setStatus("probing", { n: total.toLocaleString(lang) }, "info");
   worker.postMessage({ bytes: pdfBytes.slice(), hints } satisfies StartMsg);
   (worker as Worker & { _total?: number })._total = total;
@@ -319,12 +323,16 @@ cancelBtn.addEventListener("click", () => {
 });
 
 function finish() {
+  searching = false;
   runBtn.hidden = false;
   cancelBtn.hidden = true;
   eta.textContent = "";
 }
 
 worker.addEventListener("message", (e: MessageEvent<OutMsg>) => {
+  // Cancel stops the worker at its next yield, but a progress message may already
+  // be in flight; ignore anything that arrives once the search has ended.
+  if (!searching) return;
   const m = e.data;
   const total = (worker as Worker & { _total?: number })._total ?? 1;
   if (m.type === "progress") {

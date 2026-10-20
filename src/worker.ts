@@ -31,7 +31,12 @@ self.onmessage = async (e: MessageEvent<StartMsg | "cancel">) => {
         return;
       }
       // Report every 25 so the UI shows progress without flooding postMessage.
-      if (tried % 25 === 0) post({ type: "progress", tried, current: pw });
+      // tryPassword resolves synchronously, so the loop only drains microtasks;
+      // yield a macrotask here so a queued "cancel" message actually gets delivered.
+      if (tried % 25 === 0) {
+        post({ type: "progress", tried, current: pw });
+        await new Promise((r) => setTimeout(r, 0));
+      }
     }
     post({ type: "exhausted", tried });
   } catch (err) {

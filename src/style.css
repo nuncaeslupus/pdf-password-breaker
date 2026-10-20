@@ -252,6 +252,11 @@ fieldset.bare {
   color: var(--muted);
 }
 
+/* Reserve the line so the warning below it doesn't jump when the count clears. */
+#bruteCount {
+  min-height: 1.275rem;
+}
+
 .hint.ok {
   color: var(--ok);
 }

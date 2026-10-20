@@ -90,6 +90,7 @@ function renderMode() {
 }
 
 function renderBruteCount() {
+  bruteLen.disabled = !bruteChars.value; // length is meaningless with no charset
   const n = bruteChars.value ? bruteChars.value.length ** Number(bruteLen.value) : 0;
   bruteCount.textContent = n ? t(lang, "bruteCount", { n: n.toLocaleString(lang) }) : "";
 }

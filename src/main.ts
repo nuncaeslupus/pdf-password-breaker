@@ -136,6 +136,7 @@ chooseKnow.addEventListener("click", () => {
 chooseRecover.addEventListener("click", () => {
   intent = "recover";
   renderMode();
+  recover.open = true; // show the hints (incl. the default brute values) straight away
 });
 
 function renderFileInfo() {

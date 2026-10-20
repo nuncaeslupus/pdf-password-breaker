@@ -131,6 +131,7 @@ let intent: "remove" | "recover" | null = null; // single-file: chosen in the ch
 chooseKnow.addEventListener("click", () => {
   intent = "remove";
   renderMode();
+  known.focus();
 });
 chooseRecover.addEventListener("click", () => {
   intent = "recover";
@@ -139,13 +140,22 @@ chooseRecover.addEventListener("click", () => {
 
 function renderFileInfo() {
   if (!fileState) return;
-  if (fileState.count && fileState.count > 1) {
-    fileInfo.textContent = t(lang, "fileBatch", { n: fileState.count, locked: fileState.lockedCount! });
-  } else {
-    fileInfo.textContent = t(lang, fileState.locked ? "fileLocked" : "fileOpen", { name: fileState.name });
-  }
   fileInfo.classList.toggle("locked", fileState.locked);
   fileInfo.classList.toggle("ok", !fileState.locked);
+  fileInfo.innerHTML = "";
+  if (fileState.count && fileState.count > 1) {
+    const s = document.createElement("span");
+    s.textContent = t(lang, "fileBatch", { n: fileState.count, locked: fileState.lockedCount! });
+    fileInfo.appendChild(s);
+    return;
+  }
+  const name = document.createElement("span");
+  name.className = "fname";
+  name.textContent = fileState.name;
+  const status = document.createElement("span");
+  status.className = "fstatus";
+  status.textContent = t(lang, fileState.locked ? "fileLocked" : "fileOpen");
+  fileInfo.append(name, status);
 }
 
 function setStatus(key: string, vars: Record<string, string | number>, tone: "info" | "ok" | "bad") {
@@ -171,6 +181,7 @@ function renderResult() {
     a.download = fileName.replace(/\.pdf$/i, "") + "-" + (lang === "en" ? "unlocked" : "sin-contrasena") + ".pdf";
     a.className = "primary download";
     a.textContent = t(lang, "download");
+    result.prepend(resultHeader(1));
     result.appendChild(a);
   } else {
     const p = document.createElement("p");
@@ -228,6 +239,7 @@ async function loadFiles(files: FileList | File[]) {
   brute.disabled = multi || lockedCount === 0;
   runBtn.disabled = lockedCount === 0;
   renderMode();
+  if (!knownBox.hidden) known.focus(); // multi-file auto-selects remove → ready to type
 
   if (!multi && docs[0].locked) void showHash(docs[0].bytes);
   else {
@@ -318,8 +330,7 @@ worker.addEventListener("message", (e: MessageEvent<OutMsg>) => {
   if (m.type === "progress") {
     barFill.style.width = `${Math.min(100, (m.tried / total) * 100)}%`;
     const elapsed = (performance.now() - startedAt) / 1000;
-    const left = fmtEta(((total - m.tried) * elapsed) / m.tried);
-    eta.textContent = left ? `~${left}` : "";
+    eta.textContent = fmtEta(((total - m.tried) * elapsed) / m.tried);
     setStatus("tried", { tried: m.tried.toLocaleString(lang), total: total.toLocaleString(lang), cur: m.current }, "info");
   } else if (m.type === "found") {
     barFill.style.width = "100%";
@@ -361,6 +372,19 @@ const badSpan = (text: string) => {
   return s;
 };
 
+// Success header for the result box: green check + title (singular for one file).
+const resultHeader = (n: number) => {
+  const head = document.createElement("div");
+  head.className = "result-head";
+  const check = document.createElement("span");
+  check.className = "check";
+  check.textContent = "✓";
+  const h = document.createElement("h2");
+  h.textContent = t(lang, n === 1 ? "resultTitleOne" : "resultTitle");
+  head.append(check, h);
+  return head;
+};
+
 async function bulkRemove() {
   const pw = known.value.trim();
   reset();
@@ -380,8 +404,15 @@ async function bulkRemove() {
     const d = docs[i];
     const row = document.createElement("p");
     row.className = "bulk-row";
+    const name = document.createElement("span");
+    name.className = "fname";
+    name.textContent = d.name;
+    let action: Node;
     if (!d.locked) {
-      row.textContent = `${d.name} — ${t(lang, "bulkAlreadyOpen")}`;
+      const s = document.createElement("span");
+      s.className = "fstatus";
+      s.textContent = t(lang, "bulkAlreadyOpen");
+      action = s;
     } else if (await tryPassword(d.bytes, pw)) {
       try {
         const out = await unlock(d.bytes, pw);
@@ -390,18 +421,19 @@ async function bulkRemove() {
         a.download = d.name.replace(/\.pdf$/i, "") + "-" + (lang === "en" ? "unlocked" : "sin-contrasena") + ".pdf";
         a.className = "primary download";
         a.textContent = t(lang, "download");
-        row.textContent = `${d.name} — `;
-        row.appendChild(a);
+        action = a;
         ok++;
       } catch {
-        row.append(`${d.name} — `, badSpan(t(lang, "bulkUnlockFail")));
+        action = badSpan(t(lang, "bulkUnlockFail"));
       }
     } else {
-      row.append(`${d.name} — `, badSpan(t(lang, "bulkWrong")));
+      action = badSpan(t(lang, "bulkWrong"));
     }
+    row.append(name, action);
     list.appendChild(row);
     barFill.style.width = `${((i + 1) / docs.length) * 100}%`;
   }
+  if (ok > 0) result.prepend(resultHeader(ok));
   setStatus("bulkDone", { ok, n: docs.length }, ok ? "ok" : "bad");
 }
 

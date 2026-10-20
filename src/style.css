@@ -117,6 +117,9 @@ fieldset {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 10px;
+  /* Fieldsets default to min-inline-size:min-content, so a long unbreakable
+     filename would stretch the box past the page; let it shrink and truncate. */
+  min-width: 0;
 }
 
 legend {
@@ -262,6 +265,20 @@ fieldset.bare {
   font-weight: 600;
 }
 
+/* Filename column: takes the slack and truncates, so the status text and
+   download buttons stay aligned on the right however long the name is. */
+.fname {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fstatus {
+  flex: none;
+}
+
 .file-info::before {
   font-weight: 400;
 }
@@ -325,14 +342,14 @@ button:disabled {
   margin-top: 20px;
 }
 
-.bar-row {
+.status-line {
   display: flex;
-  align-items: center;
+  justify-content: space-between;
+  align-items: baseline;
   gap: 12px;
 }
 
 .bar {
-  flex: 1;
   height: 8px;
   background: var(--line);
   border-radius: 4px;
@@ -380,6 +397,32 @@ button:disabled {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 10px;
+}
+
+.result-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 16px;
+}
+
+.result-head .check {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--ok);
+  color: #fff;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.result-head h2 {
+  margin: 0;
+  font-size: 1.15rem;
 }
 
 .found {
@@ -430,9 +473,9 @@ a.download {
 
 .bulk-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   margin: 8px 0;
   font-size: 0.95rem;
 }

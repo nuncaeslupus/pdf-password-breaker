@@ -141,7 +141,7 @@
             <p class="hint" id="bruteCount"></p>
             <p class="hint" data-i18n="bruteWarn">
               Cada intento abre el PDF, así que el espacio crece muy rápido: con letras, 5 o más
-              caracteres puede tardar horas. Para eso, usa hashcat (paso 4).
+              caracteres puede tardar horas. Para eso, usa hashcat (abajo).
             </p>
           </fieldset>
         </div>
@@ -172,11 +172,11 @@
       </div>
 
       <div id="status" class="status" hidden>
-        <div class="bar-row">
-          <div class="bar"><div class="bar-fill" id="barFill"></div></div>
+        <div class="bar"><div class="bar-fill" id="barFill"></div></div>
+        <div class="status-line">
+          <p id="statusText"></p>
           <span id="eta" class="eta"></span>
         </div>
-        <p id="statusText"></p>
       </div>
 
       <div id="result" class="result" hidden></div>

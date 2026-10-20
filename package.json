@@ -1,6 +1,7 @@
 {
   "name": "pdf-password-breaker",
   "private": true,
+  "license": "MIT",
   "version": "0.1.0",
   "type": "module",
   "description": "Recupera la contraseña de un PDF propio probando candidatos. Todo en el navegador, nada se sube.",

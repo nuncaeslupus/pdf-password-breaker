@@ -208,7 +208,9 @@ function fmtEta(sec: number): string {
 }
 
 // ── file handling ─────────────────────────────────────────────────────────────
-let docs: { name: string; bytes: Uint8Array; locked: boolean }[] = [];
+// `blobUrl` is set once a file is unlocked; it lives only in memory for this
+// page, so passwords and decrypted output never outlast the session.
+let docs: { name: string; bytes: Uint8Array; locked: boolean; blobUrl?: string }[] = [];
 let pdfBytes: Uint8Array | null = null; // the single active doc, for the recovery path
 let fileName = "documento.pdf";
 
@@ -395,23 +397,41 @@ const resultHeader = (n: number) => {
   return head;
 };
 
+const isDone = (d: (typeof docs)[number]) => !d.locked || !!d.blobUrl;
+
 async function bulkRemove() {
   const pw = known.value.trim();
-  reset();
-  statusBox.hidden = false;
-  barFill.style.width = "0%";
-  eta.textContent = "";
   if (!pw) {
+    reset();
+    statusBox.hidden = false;
     setStatus("bulkNeedPassword", {}, "bad");
     return;
   }
+  // Try this password against every file still waiting for one, so a password
+  // typed for one file also unlocks any sibling that shares it — each distinct
+  // password is only asked once. Failures stay pending for the next password.
+  for (const d of docs) {
+    if (isDone(d) || !(await tryPassword(d.bytes, pw))) continue;
+    try {
+      const out = await unlock(d.bytes, pw);
+      d.blobUrl = URL.createObjectURL(new Blob([out as BlobPart], { type: "application/pdf" }));
+    } catch {
+      /* unlock failed despite the right password; leave it pending */
+    }
+  }
+  known.value = ""; // clear so the next (different) password is typed fresh
+  renderBulk();
+  if (docs.some((d) => !isDone(d))) known.focus();
+}
+
+// Renders one row per file: already-open, a download once unlocked, or a
+// "needs a password" marker while it waits. Re-run after each password.
+function renderBulk() {
+  reset();
   result.hidden = false;
   result.innerHTML = "";
   const list = document.createElement("div");
-  result.appendChild(list);
-  let ok = 0;
-  for (let i = 0; i < docs.length; i++) {
-    const d = docs[i];
+  for (const d of docs) {
     const row = document.createElement("p");
     row.className = "bulk-row";
     const name = document.createElement("span");
@@ -423,28 +443,28 @@ async function bulkRemove() {
       s.className = "fstatus";
       s.textContent = t(lang, "bulkAlreadyOpen");
       action = s;
-    } else if (await tryPassword(d.bytes, pw)) {
-      try {
-        const out = await unlock(d.bytes, pw);
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(new Blob([out as BlobPart], { type: "application/pdf" }));
-        a.download = d.name.replace(/\.pdf$/i, "") + "-" + (lang === "en" ? "unlocked" : "sin-contrasena") + ".pdf";
-        a.className = "primary download";
-        a.textContent = t(lang, "download");
-        action = a;
-        ok++;
-      } catch {
-        action = badSpan(t(lang, "bulkUnlockFail"));
-      }
+    } else if (d.blobUrl) {
+      const a = document.createElement("a");
+      a.href = d.blobUrl;
+      a.download = d.name.replace(/\.pdf$/i, "") + "-" + (lang === "en" ? "unlocked" : "sin-contrasena") + ".pdf";
+      a.className = "primary download";
+      a.textContent = t(lang, "download");
+      action = a;
     } else {
-      action = badSpan(t(lang, "bulkWrong"));
+      action = badSpan(t(lang, "bulkPending"));
     }
     row.append(name, action);
     list.appendChild(row);
-    barFill.style.width = `${((i + 1) / docs.length) * 100}%`;
   }
-  if (ok > 0) result.prepend(resultHeader(ok));
-  setStatus("bulkDone", { ok, n: docs.length }, ok ? "ok" : "bad");
+  const ok = docs.filter((d) => d.blobUrl).length;
+  const open = docs.filter(isDone).length;
+  const remaining = docs.length - open;
+  if (open > 0) result.prepend(resultHeader(open));
+  result.appendChild(list);
+  statusBox.hidden = false;
+  barFill.style.width = `${(open / docs.length) * 100}%`;
+  if (remaining > 0) setStatus("bulkRemaining", { n: remaining }, "info");
+  else setStatus("bulkDone", { ok, n: docs.length }, "ok");
 }
 
 // ── hashcat hash export ─────────────────────────────────────────────────────

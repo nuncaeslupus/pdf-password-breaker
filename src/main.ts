@@ -131,7 +131,7 @@ let intent: "remove" | "recover" | null = null; // single-file: chosen in the ch
 chooseKnow.addEventListener("click", () => {
   intent = "remove";
   renderMode();
-  known.focus();
+  known.select(); // focus + preselect any leftover text so it's easy to overwrite
 });
 chooseRecover.addEventListener("click", () => {
   intent = "recover";
@@ -240,7 +240,7 @@ async function loadFiles(files: FileList | File[]) {
   brute.disabled = multi || lockedCount === 0;
   runBtn.disabled = lockedCount === 0;
   renderMode();
-  if (!knownBox.hidden) known.focus(); // multi-file auto-selects remove → ready to type
+  if (!knownBox.hidden) known.select(); // multi-file auto-selects remove → ready to type
 
   if (!multi && docs[0].locked) void showHash(docs[0].bytes);
   else {

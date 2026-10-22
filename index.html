@@ -3,12 +3,74 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#111111" media="(prefers-color-scheme: dark)" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <title>Recuperar y quitar contraseñas de PDF</title>
     <meta
       name="description"
       content="Recupera la contraseña de un PDF tuyo, o quita la contraseña común de varios a la vez. Todo en tu navegador, nada se sube. / Recover a PDF's password, or strip a shared password from several at once. In your browser; nothing is uploaded."
     />
+    <meta
+      name="keywords"
+      content="recuperar contraseña PDF, quitar contraseña PDF, desbloquear PDF, recover PDF password, remove PDF password, unlock PDF, PDF password, hashcat PDF"
+    />
+    <link rel="canonical" href="https://nuncaeslupus.github.io/pdf-password-breaker/" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Recuperar y quitar contraseñas de PDF" />
+    <meta property="og:title" content="Recuperar y quitar contraseñas de PDF" />
+    <meta
+      property="og:description"
+      content="Recupera la contraseña de un PDF tuyo, o quítala si la conoces. Todo en tu navegador, nada se sube."
+    />
+    <meta property="og:url" content="https://nuncaeslupus.github.io/pdf-password-breaker/" />
+    <meta
+      property="og:image"
+      content="https://nuncaeslupus.github.io/pdf-password-breaker/og.png"
+    />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Recuperar y quitar contraseñas de PDF en tu navegador" />
+    <meta property="og:locale" content="es_ES" />
+    <meta property="og:locale:alternate" content="ca_ES" />
+    <meta property="og:locale:alternate" content="en_US" />
+    <meta property="og:locale:alternate" content="fr_FR" />
+    <meta property="og:locale:alternate" content="it_IT" />
+    <meta property="og:locale:alternate" content="de_DE" />
+    <meta property="og:locale:alternate" content="pt_PT" />
+    <meta property="og:locale:alternate" content="zh_CN" />
+    <meta property="og:locale:alternate" content="ja_JP" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Recover and remove PDF passwords" />
+    <meta
+      name="twitter:description"
+      content="Recover your own PDF's password, or remove it if you know it. In your browser; nothing is uploaded."
+    />
+    <meta
+      name="twitter:image"
+      content="https://nuncaeslupus.github.io/pdf-password-breaker/og.png"
+    />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Recover and remove PDF passwords",
+        "url": "https://nuncaeslupus.github.io/pdf-password-breaker/",
+        "description": "Recover your own PDF's password with hints, or remove a known password from one or many PDFs. Everything runs in the browser; nothing is uploaded.",
+        "applicationCategory": "UtilitiesApplication",
+        "operatingSystem": "Any (web browser)",
+        "browserRequirements": "Requires JavaScript",
+        "inLanguage": ["es", "ca", "en", "fr", "it", "de", "pt", "zh", "ja"],
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+        "isAccessibleForFree": true
+      }
+    </script>
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
@@ -30,9 +92,8 @@
           </svg>
           <h1 data-i18n="title">Recuperar y quitar contraseñas de PDF</h1>
         </div>
-        <div class="langs" role="group" aria-label="Language">
-          <button type="button" data-lang="es">ES</button>
-          <button type="button" data-lang="en">EN</button>
+        <div class="langs">
+          <select id="lang" aria-label="Language"></select>
         </div>
       </header>
 

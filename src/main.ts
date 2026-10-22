@@ -1,6 +1,11 @@
-import { countCandidates, extractHash, tryPassword, unlock, type Hints, type PdfHash } from "./crack";
-import { HTML_KEYS, helpHtml, t, type Lang } from "./i18n";
+import type { Hints, PdfHash } from "./crack";
+import { HTML_KEYS, LANGS, STRINGS, helpHtml, pickLang, t, type Lang } from "./i18n";
 import type { OutMsg, StartMsg } from "./worker";
+
+// pdf-lib (via crack.ts) is the bulk of the bundle but is only needed once a
+// file is loaded, so import it on demand and memoise it.
+let crackPromise: Promise<typeof import("./crack")> | null = null;
+const getCrack = (): Promise<typeof import("./crack")> => (crackPromise ??= import("./crack"));
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -36,10 +41,13 @@ const copyMsg = $<HTMLElement>("copyMsg");
 const hashcatHelp = $<HTMLElement>("hashcatHelp");
 
 // ── language ───────────────────────────────────────────────────────────────
+const langSelect = $<HTMLSelectElement>("lang");
+for (const { code, name } of LANGS) langSelect.add(new Option(name, code));
+
 let lang: Lang = ((): Lang => {
   const saved = localStorage.getItem("lang");
-  if (saved === "es" || saved === "en") return saved;
-  return navigator.language.startsWith("en") ? "en" : "es";
+  if (saved && saved in STRINGS) return saved as Lang;
+  return pickLang(navigator.languages);
 })();
 
 function applyLang() {
@@ -50,9 +58,7 @@ function applyLang() {
     if (HTML_KEYS.has(key)) el.innerHTML = t(lang, key);
     else el.textContent = t(lang, key);
   });
-  document.querySelectorAll<HTMLButtonElement>(".langs button").forEach((b) => {
-    b.classList.toggle("active", b.dataset.lang === lang);
-  });
+  langSelect.value = lang;
   renderFileInfo();
   renderStatus();
   renderResult();
@@ -118,9 +124,7 @@ function setLang(next: Lang) {
   applyLang();
 }
 
-document.querySelectorAll<HTMLButtonElement>(".langs button").forEach((b) =>
-  b.addEventListener("click", () => setLang(b.dataset.lang as Lang)),
-);
+langSelect.addEventListener("change", () => setLang(langSelect.value as Lang));
 
 // ── render state (so a language switch re-translates what's on screen) ───────
 let fileState: { name: string; locked: boolean; count?: number; lockedCount?: number } | null = null;
@@ -180,7 +184,7 @@ function renderResult() {
   if (resultState.blobUrl) {
     const a = document.createElement("a");
     a.href = resultState.blobUrl;
-    a.download = fileName.replace(/\.pdf$/i, "") + "-" + (lang === "en" ? "unlocked" : "sin-contrasena") + ".pdf";
+    a.download = fileName.replace(/\.pdf$/i, "") + "-" + t(lang, "unlockedSuffix") + ".pdf";
     a.className = "primary download";
     a.textContent = t(lang, "download");
     result.prepend(resultHeader(1));
@@ -214,7 +218,42 @@ let docs: { name: string; bytes: Uint8Array; locked: boolean; blobUrl?: string }
 let pdfBytes: Uint8Array | null = null; // the single active doc, for the recovery path
 let fileName = "documento.pdf";
 
-const worker = new Worker(new URL("./worker.ts", import.meta.url), { type: "module" });
+// The search worker also pulls in pdf-lib, so it is created only when a recovery
+// search actually starts — not on every page load.
+let worker: (Worker & { _total?: number }) | null = null;
+function getWorker(): Worker & { _total?: number } {
+  if (worker) return worker;
+  const w = new Worker(new URL("./worker.ts", import.meta.url), {
+    type: "module",
+  }) as Worker & { _total?: number };
+  w.addEventListener("message", (e: MessageEvent<OutMsg>) => {
+    // Cancel stops the worker at its next yield, but a progress message may already
+    // be in flight; ignore anything that arrives once the search has ended.
+    if (!searching) return;
+    const m = e.data;
+    const total = w._total ?? 1;
+    if (m.type === "progress") {
+      barFill.style.width = `${Math.min(100, (m.tried / total) * 100)}%`;
+      const elapsed = (performance.now() - startedAt) / 1000;
+      eta.textContent = fmtEta(((total - m.tried) * elapsed) / m.tried);
+      setStatus("tried", { tried: m.tried.toLocaleString(lang), total: total.toLocaleString(lang), cur: m.current }, "info");
+    } else if (m.type === "found") {
+      barFill.style.width = "100%";
+      finish();
+      setStatus("found", { n: m.tried.toLocaleString(lang) }, "ok");
+      void showFound(m.password);
+    } else if (m.type === "exhausted") {
+      barFill.style.width = "100%";
+      finish();
+      setStatus("exhausted", { n: m.tried.toLocaleString(lang) }, "bad");
+    } else if (m.type === "error") {
+      finish();
+      setStatus("error", { msg: m.message }, "bad");
+    }
+  });
+  worker = w;
+  return w;
+}
 
 const lines = (id: string) =>
   $<HTMLTextAreaElement>(id)
@@ -226,6 +265,7 @@ async function loadFiles(files: FileList | File[]) {
   reset();
   intent = null;
   docs = [];
+  const { tryPassword } = await getCrack();
   for (const file of Array.from(files)) {
     const bytes = new Uint8Array(await file.arrayBuffer());
     docs.push({ name: file.name, bytes, locked: !(await tryPassword(bytes, "")) });
@@ -285,6 +325,10 @@ runBtn.addEventListener("click", () => {
     return;
   }
   if (!pdfBytes) return;
+  void startSearch(pdfBytes);
+});
+
+async function startSearch(bytes: Uint8Array) {
   const hints: Hints = {
     // `known` is the remove-path box (hidden here); don't let a stale value from
     // a previous "I know the password" leak in as a free candidate.
@@ -294,6 +338,7 @@ runBtn.addEventListener("click", () => {
     sweepChars: bruteChars.value,
     sweepLen: Number(bruteLen.value),
   };
+  const { countCandidates } = await getCrack();
   const total = countCandidates(hints);
   reset();
   statusBox.hidden = false;
@@ -309,9 +354,10 @@ runBtn.addEventListener("click", () => {
   startedAt = performance.now();
   searching = true;
   setStatus("probing", { n: total.toLocaleString(lang) }, "info");
-  worker.postMessage({ bytes: pdfBytes.slice(), hints } satisfies StartMsg);
-  (worker as Worker & { _total?: number })._total = total;
-});
+  const w = getWorker();
+  w.postMessage({ bytes: bytes.slice(), hints } satisfies StartMsg);
+  w._total = total;
+}
 
 known.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !runBtn.disabled) {
@@ -321,7 +367,7 @@ known.addEventListener("keydown", (e) => {
 });
 
 cancelBtn.addEventListener("click", () => {
-  worker.postMessage("cancel");
+  worker?.postMessage("cancel");
   finish();
   setStatus("cancelled", {}, "info");
 });
@@ -333,37 +379,12 @@ function finish() {
   eta.textContent = "";
 }
 
-worker.addEventListener("message", (e: MessageEvent<OutMsg>) => {
-  // Cancel stops the worker at its next yield, but a progress message may already
-  // be in flight; ignore anything that arrives once the search has ended.
-  if (!searching) return;
-  const m = e.data;
-  const total = (worker as Worker & { _total?: number })._total ?? 1;
-  if (m.type === "progress") {
-    barFill.style.width = `${Math.min(100, (m.tried / total) * 100)}%`;
-    const elapsed = (performance.now() - startedAt) / 1000;
-    eta.textContent = fmtEta(((total - m.tried) * elapsed) / m.tried);
-    setStatus("tried", { tried: m.tried.toLocaleString(lang), total: total.toLocaleString(lang), cur: m.current }, "info");
-  } else if (m.type === "found") {
-    barFill.style.width = "100%";
-    finish();
-    setStatus("found", { n: m.tried.toLocaleString(lang) }, "ok");
-    void showFound(m.password);
-  } else if (m.type === "exhausted") {
-    barFill.style.width = "100%";
-    finish();
-    setStatus("exhausted", { n: m.tried.toLocaleString(lang) }, "bad");
-  } else if (m.type === "error") {
-    finish();
-    setStatus("error", { msg: m.message }, "bad");
-  }
-});
-
 async function showFound(password: string) {
   result.hidden = false;
   let blobUrl: string | null = null;
   if (pdfBytes) {
     try {
+      const { unlock } = await getCrack();
       const out = await unlock(pdfBytes, password);
       blobUrl = URL.createObjectURL(new Blob([out as BlobPart], { type: "application/pdf" }));
     } catch {
@@ -410,6 +431,7 @@ async function bulkRemove() {
   // Try this password against every file still waiting for one, so a password
   // typed for one file also unlocks any sibling that shares it — each distinct
   // password is only asked once. Failures stay pending for the next password.
+  const { tryPassword, unlock } = await getCrack();
   for (const d of docs) {
     if (isDone(d) || !(await tryPassword(d.bytes, pw))) continue;
     try {
@@ -446,7 +468,7 @@ function renderBulk() {
     } else if (d.blobUrl) {
       const a = document.createElement("a");
       a.href = d.blobUrl;
-      a.download = d.name.replace(/\.pdf$/i, "") + "-" + (lang === "en" ? "unlocked" : "sin-contrasena") + ".pdf";
+      a.download = d.name.replace(/\.pdf$/i, "") + "-" + t(lang, "unlockedSuffix") + ".pdf";
       a.className = "primary download";
       a.textContent = t(lang, "download");
       action = a;
@@ -472,6 +494,7 @@ async function showHash(bytes: Uint8Array) {
   copyMsg.textContent = "";
   currentHash = null;
   try {
+    const { extractHash } = await getCrack();
     currentHash = await extractHash(bytes);
   } catch {
     // Non-standard encryption we can't read — the hint search above still works.

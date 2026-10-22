@@ -92,17 +92,12 @@ h1 {
   gap: 4px;
 }
 
-.langs button {
-  padding: 4px 10px;
+.langs select {
+  width: auto;
+  padding: 4px 28px 4px 10px;
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--muted);
-}
-
-.langs button.active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
 }
 
 .lede {

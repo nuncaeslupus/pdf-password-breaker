@@ -5,17 +5,17 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# The build runs npm lifecycle scripts; the job needs contents:write only to
-# publish the built site to the gh-pages branch (the Pages source).
+# Least privilege: the build job (which runs npm lifecycle scripts) gets a
+# read-only token; only the deploy job needs the Pages/OIDC write permissions.
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: "pages"
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,16 +27,22 @@ jobs:
 
       - run: npm ci
       - run: npm run build
-      - run: touch dist/.nojekyll
 
-      - name: Publish dist to gh-pages
-        run: |
-          cd dist
-          git init -q
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -q -m "Deploy ${GITHUB_SHA}"
-          git push -f "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:gh-pages
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

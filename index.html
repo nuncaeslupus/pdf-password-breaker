@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#111111" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <title>Recuperar y quitar contraseñas de PDF</title>
+    <meta
+      name="description"
+      content="Recupera la contraseña de un PDF tuyo, o quita la contraseña común de varios a la vez. Todo en tu navegador, nada se sube. / Recover a PDF's password, or strip a shared password from several at once. In your browser; nothing is uploaded."
+    />
+    <meta
+      name="keywords"
+      content="recuperar contraseña PDF, quitar contraseña PDF, desbloquear PDF, recover PDF password, remove PDF password, unlock PDF, PDF password, hashcat PDF"
+    />
+    <link rel="canonical" href="https://nuncaeslupus.github.io/pdf-password-breaker/" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Recuperar y quitar contraseñas de PDF" />
+    <meta property="og:title" content="Recuperar y quitar contraseñas de PDF" />
+    <meta
+      property="og:description"
+      content="Recupera la contraseña de un PDF tuyo, o quítala si la conoces. Todo en tu navegador, nada se sube."
+    />
+    <meta property="og:url" content="https://nuncaeslupus.github.io/pdf-password-breaker/" />
+    <meta
+      property="og:image"
+      content="https://nuncaeslupus.github.io/pdf-password-breaker/og.png"
+    />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Recuperar y quitar contraseñas de PDF en tu navegador" />
+    <meta property="og:locale" content="es_ES" />
+    <meta property="og:locale:alternate" content="ca_ES" />
+    <meta property="og:locale:alternate" content="en_US" />
+    <meta property="og:locale:alternate" content="fr_FR" />
+    <meta property="og:locale:alternate" content="it_IT" />
+    <meta property="og:locale:alternate" content="de_DE" />
+    <meta property="og:locale:alternate" content="pt_PT" />
+    <meta property="og:locale:alternate" content="zh_CN" />
+    <meta property="og:locale:alternate" content="ja_JP" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Recover and remove PDF passwords" />
+    <meta
+      name="twitter:description"
+      content="Recover your own PDF's password, or remove it if you know it. In your browser; nothing is uploaded."
+    />
+    <meta
+      name="twitter:image"
+      content="https://nuncaeslupus.github.io/pdf-password-breaker/og.png"
+    />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Recover and remove PDF passwords",
+        "url": "https://nuncaeslupus.github.io/pdf-password-breaker/",
+        "description": "Recover your own PDF's password with hints, or remove a known password from one or many PDFs. Everything runs in the browser; nothing is uploaded.",
+        "applicationCategory": "UtilitiesApplication",
+        "operatingSystem": "Any (web browser)",
+        "browserRequirements": "Requires JavaScript",
+        "inLanguage": ["es", "ca", "en", "fr", "it", "de", "pt", "zh", "ja"],
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+        "isAccessibleForFree": true
+      }
+    </script>
+    <script type="module" crossorigin src="./assets/index-BDMQB0fr.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-CQflDhm1.css">
+    <meta http-equiv="Content-Security-Policy" content="default-src &#39;self&#39;; script-src &#39;self&#39; &#39;wasm-unsafe-eval&#39;; style-src &#39;self&#39; &#39;unsafe-inline&#39;; img-src &#39;self&#39; data: blob:; worker-src &#39;self&#39; blob:; connect-src &#39;self&#39;; object-src &#39;none&#39;; base-uri &#39;none&#39;; form-action &#39;none&#39;">
+  </head>
+  <body>
+    <main>
+      <header class="topbar">
+        <div class="brand">
+          <svg class="logo" viewBox="0 0 48 48" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+            <path
+              class="shackle"
+              d="M15 22v-6a9 9 0 0 1 17.5-3"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="4"
+              stroke-linecap="round"
+            />
+            <rect class="body" x="10" y="22" width="28" height="20" rx="4" />
+            <circle class="hole" cx="24" cy="30" r="3" />
+            <rect class="hole" x="23" y="31" width="2" height="6" rx="1" />
+          </svg>
+          <h1 data-i18n="title">Recuperar y quitar contraseñas de PDF</h1>
+        </div>
+        <div class="langs">
+          <select id="lang" aria-label="Language"></select>
+        </div>
+      </header>
+
+      <p class="lede" data-i18n="lede">
+        Prueba contraseñas sobre <strong>un PDF tuyo</strong> a partir de lo que ya conoces. Todo
+        ocurre en tu navegador: el archivo <strong>no se sube a ningún sitio</strong>.
+      </p>
+
+      <fieldset>
+        <legend data-i18n="legend1">1. El PDF</legend>
+        <label class="drop" id="drop">
+          <span data-i18n="drop">Arrastra el PDF aquí o haz clic para elegirlo</span>
+          <input type="file" id="file" accept="application/pdf" multiple />
+        </label>
+        <p class="file-info" id="fileInfo" hidden></p>
+      </fieldset>
+
+      <fieldset id="chooser" hidden>
+        <legend data-i18n="chooserLegend">¿Qué quieres hacer?</legend>
+        <div class="choices">
+          <button type="button" class="choice" id="chooseKnow" data-i18n="chooseKnow">
+            Sé la contraseña y quiero quitarla
+          </button>
+          <button type="button" class="choice" id="chooseRecover" data-i18n="chooseRecover">
+            No sé la contraseña y quiero recuperarla
+          </button>
+        </div>
+        <p class="hint" id="chooserNote" hidden data-i18n="chooserMultiNote">
+          Con varios archivos solo se puede quitar una contraseña conocida; recuperar es de un archivo.
+        </p>
+      </fieldset>
+
+      <fieldset id="knownBox" hidden disabled>
+        <legend id="knownLegend" data-i18n="removeLegend">Quitar la contraseña</legend>
+        <label class="field">
+          <span class="field-head">
+            <strong data-i18n="knownLabel">Contraseña</strong>
+            <small id="knownHint" data-i18n="removeHint">Escríbela y pulsa Quitar para descargar el PDF sin ella.</small>
+          </span>
+          <input type="text" id="known" autocomplete="off" placeholder="MiContraseña" />
+        </label>
+      </fieldset>
+
+      <details id="recover" class="step" hidden>
+        <summary data-i18n="recoverSummary">Pistas para probar</summary>
+        <div class="details-body">
+          <h3 class="sub" data-i18n="rememberSub">Lo que recuerdas</h3>
+          <fieldset id="remember" class="bare" disabled>
+            <label class="field">
+              <span class="field-head">
+                <strong data-i18n="wordsLabel">Palabras probables</strong>
+                <small data-i18n="wordsHint">Una por línea. Se probará tal cual y en may./min./Capital.</small>
+              </span>
+              <textarea id="words" rows="2" placeholder="factura&#10;MiEmpresa2024"></textarea>
+            </label>
+            <label class="field">
+              <span class="field-head">
+                <strong data-i18n="idsLabel">Números (DNI, cuenta, tel.)</strong>
+                <small data-i18n="idsHint">Uno por línea. Se probará con y sin letra de control y sin ceros.</small>
+              </span>
+              <textarea id="ids" rows="2" placeholder="12345678Z&#10;600123456"></textarea>
+            </label>
+            <label class="field">
+              <span class="field-head">
+                <strong data-i18n="datesLabel">Fechas</strong>
+                <small data-i18n="datesHint">Una por línea. Se probará en varios formatos.</small>
+              </span>
+              <textarea id="dates" rows="2" placeholder="23/05/1990&#10;1985-12-01"></textarea>
+            </label>
+          </fieldset>
+          <h3 class="sub" data-i18n="bruteSub">Fuerza bruta</h3>
+          <fieldset id="brute" class="bare" disabled>
+            <p class="hint" data-i18n="bruteIntro">
+              Prueba todas las combinaciones de un conjunto de caracteres y una longitud exacta.
+              Práctico para un PIN o una clave muy corta.
+            </p>
+            <label class="inline">
+              <span data-i18n="bruteCharsLabel">Caracteres</span>
+              <select id="bruteChars">
+                <option value="" data-i18n="bruteOff">— (desactivado)</option>
+                <option value="0123456789" selected data-i18n="bruteDigits">dígitos (0-9)</option>
+                <option value="abcdefghijklmnopqrstuvwxyz" data-i18n="bruteLower">minúsculas (a-z)</option>
+                <option value="abcdefghijklmnopqrstuvwxyz0123456789" data-i18n="bruteLowerDigits">
+                  minúsculas + dígitos
+                </option>
+                <option value="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ" data-i18n="bruteLetters">
+                  may. + min. (a-z, A-Z)
+                </option>
+                <option
+                  value="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+                  data-i18n="bruteAll"
+                >
+                  letras + dígitos
+                </option>
+              </select>
+            </label>
+            <label class="inline">
+              <span data-i18n="bruteLenLabel">Longitud exacta</span>
+              <select id="bruteLen">
+                <option value="3">3</option>
+                <option value="4" selected>4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+              </select>
+            </label>
+            <p class="hint" id="bruteCount"></p>
+            <p class="hint" data-i18n="bruteWarn">
+              Cada intento abre el PDF, así que el espacio crece muy rápido: con letras, 5 o más
+              caracteres puede tardar horas. Para eso, usa hashcat (abajo).
+            </p>
+          </fieldset>
+        </div>
+      </details>
+
+      <details id="gpu" class="step" hidden>
+        <summary data-i18n="gpuSummary">¿Contraseña difícil? Úsala en tu GPU con hashcat</summary>
+        <div class="details-body">
+          <p class="hint" data-i18n="gpuIntro">
+            Si las pistas no bastan, tu tarjeta gráfica prueba millones de contraseñas por segundo
+            con <strong>hashcat</strong>. El PDF nunca sale de tu equipo.
+          </p>
+          <label>
+            <span data-i18n="hashLabel">Hash de tu PDF</span>
+            <textarea id="hashOut" rows="3" readonly></textarea>
+          </label>
+          <div class="actions">
+            <button id="copyHash" data-i18n="copyHash">Copiar hash</button>
+            <span id="copyMsg" class="hint"></span>
+          </div>
+          <div id="hashcatHelp" class="help"></div>
+        </div>
+      </details>
+
+      <div class="actions" id="runActions" hidden>
+        <button id="run" class="primary" disabled data-i18n="run">Buscar contraseña</button>
+        <button id="cancel" hidden data-i18n="cancel">Cancelar</button>
+      </div>
+
+      <div id="status" class="status" hidden>
+        <div class="bar"><div class="bar-fill" id="barFill"></div></div>
+        <div class="status-line">
+          <p id="statusText"></p>
+          <span id="eta" class="eta"></span>
+        </div>
+      </div>
+
+      <div id="result" class="result" hidden></div>
+    </main>
+    <footer>
+      <span data-i18n="footer">Solo para documentos propios. Gratis, de código abierto y sin servidor.</span>
+      <a href="https://github.com/nuncaeslupus/pdf-password-breaker" target="_blank" rel="noopener">
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+          <path
+            fill="currentColor"
+            d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"
+          /></svg
+        ><span data-i18n="source">Código fuente</span></a
+      >
+    </footer>
+  </body>
+</html>

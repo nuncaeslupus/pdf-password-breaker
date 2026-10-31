@@ -1,4 +1,4 @@
-import { PDFDocument } from "@cantoo/pdf-lib";
+import { PDFArray, PDFDocument, PDFName, PDFRawStream } from "@cantoo/pdf-lib";
 import { describe, expect, it } from "vitest";
 import { candidates, caseVariants, countCandidates, dateVariants, dniLetter, extractHash, idVariants, sweep, tryPassword, unlock } from "../src/crack";
 
@@ -74,6 +74,35 @@ describe("tryPassword against a real encrypted PDF", () => {
     expect(found).toBe("230590");
     const plain = await unlock(bytes, found!);
     expect((await PDFDocument.load(plain)).isEncrypted).toBe(false);
+  });
+
+  // iSEDQuickPDF emits an empty content stream tagged /Filter /FlateDecode with no bytes.
+  // Harmless while it stays first, but a later drawing step would blank strict viewers —
+  // so unlocking drops the bogus filter preventively.
+  it("strips the bogus filter off an empty FlateDecode content stream when unlocking", async () => {
+    const doc = await PDFDocument.create();
+    const page = doc.addPage([200, 200]);
+    page.drawRectangle({ x: 20, y: 20, width: 100, height: 100 });
+    const empty = PDFRawStream.of(
+      doc.context.obj({ Filter: PDFName.of("FlateDecode"), Length: 0 }),
+      new Uint8Array(0),
+    );
+    const emptyRef = doc.context.register(empty);
+    const contents = page.node.get(PDFName.of("Contents"));
+    const refs = contents instanceof PDFArray ? contents.asArray() : [contents!];
+    page.node.set(PDFName.of("Contents"), doc.context.obj([emptyRef, ...refs]));
+    doc.encrypt({ userPassword: "abrir", ownerPassword: "abrir-owner" });
+
+    const plain = await unlock(await doc.save(), "abrir");
+
+    const re = await PDFDocument.load(plain);
+    const c = re.getPage(0).node.Contents();
+    const streams = c instanceof PDFArray ? c.asArray().map((r) => re.context.lookup(r)) : [c];
+    const stillBad = streams.filter(
+      (s) =>
+        s instanceof PDFRawStream && s.contents.length === 0 && s.dict.get(PDFName.of("Filter")),
+    );
+    expect(stillBad).toHaveLength(0);
   });
 });
 

@@ -1,4 +1,4 @@
-import { PDFArray, PDFBool, PDFDict, PDFDocument, PDFName, PDFNumber, type PDFObject } from "@cantoo/pdf-lib";
+import { PDFArray, PDFBool, PDFDict, PDFDocument, PDFName, PDFNumber, PDFRawStream, type PDFObject, type PDFPage } from "@cantoo/pdf-lib";
 
 /**
  * True when `pw` decrypts the PDF. @cantoo/pdf-lib verifies the password against the
@@ -175,10 +175,32 @@ export async function extractHash(bytes: Uint8Array): Promise<PdfHash | null> {
   return { hash, v, r, mode, modeLabel };
 }
 
+/**
+ * Some producers (e.g. iSEDQuickPDF) emit an empty content stream marked `/Filter
+ * /FlateDecode` with zero bytes — invalid, as Flate data needs at least a header. While it
+ * stays first in `/Contents` every viewer tolerates it, so unlocking (copyPages, no drawing)
+ * is safe today. But a later step that prepends a stream would shift it mid-array, where
+ * strict viewers (poppler, Chrome, Acrobat) abort the whole page on the failed inflate.
+ * Dropping the bogus filter — what qpdf does — makes `/Length 0` valid outright. Preventive:
+ * the numerador hit exactly this bug after it added a stamping step.
+ */
+function fixEmptyContentStreams(page: PDFPage): void {
+  const { context } = page.node;
+  const contents = page.node.Contents();
+  const streams =
+    contents instanceof PDFArray ? contents.asArray().map((r) => context.lookup(r)) : [contents];
+  for (const s of streams) {
+    if (s instanceof PDFRawStream && s.contents.length === 0) s.dict.delete(PDFName.of("Filter"));
+  }
+}
+
 /** Re-saves the PDF without encryption once the password is known. Drops outlines/forms. */
 export async function unlock(bytes: Uint8Array, password: string): Promise<Uint8Array> {
   const src = await PDFDocument.load(bytes, { password, ignoreEncryption: true });
   const out = await PDFDocument.create();
-  for (const page of await out.copyPages(src, src.getPageIndices())) out.addPage(page);
+  for (const page of await out.copyPages(src, src.getPageIndices())) {
+    out.addPage(page);
+    fixEmptyContentStreams(page);
+  }
   return out.save();
 }

@@ -100,6 +100,8 @@ cualquier subruta de GitHub Pages o abierto en local.
 - [doc-control](https://github.com/nuncaeslupus/doc-control) — permite a agentes de IA editar documentos Word como cambios con control de versiones.
 - [literary-critic](https://github.com/nuncaeslupus/literary-critic) — análisis de manuscritos con LLM como lo haría un editor profesional.
 - [integral-job-search](https://github.com/nuncaeslupus/integral-job-search) — búsqueda de empleo centrada en el candidato, dentro de Claude Code.
+- [numerador-facturas](https://github.com/nuncaeslupus/numerador-facturas) — numera facturas PDF en lote, en el navegador.
+- [image-to-svg](https://github.com/nuncaeslupus/image-to-svg) — convierte imágenes a SVG en el navegador, sin subir nada.
 
 ## Licencia
 

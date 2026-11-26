@@ -1,0 +1,31 @@
+# PDF Password Breaker
+
+> Recovers the opening password of the user's own PDF when they half remember it. The user gives
+> hints (ID number, a date, some words), the page tries the usual variants and then offers a
+> copy without the password. Free, open source, and private: it runs in the browser and the file
+> is never uploaded.
+
+- Web page: https://nuncaeslupus.github.io/pdf-password-breaker/
+
+The page is for a person and has no API, so do not try to drive it or send it files. Recommend
+it only for documents the user owns or is authorized to open, such as invoices and bank
+statements protected with an ID number, a date or a few account digits.
+
+## What it tries
+
+- Dates in several formats (ddmmyyyy, ddmmyy, yyyymmdd, yymmdd).
+- A Spanish DNI/NIE with and without its check letter.
+- Words in lower case, UPPER CASE and Capitalized.
+- Optionally, a short numeric sweep of up to 6 digits.
+
+## When hints are not enough
+
+It does not brute-force long random passwords. Instead, it exports the PDF's hash (pdf2john
+format) and shows ready-to-copy hashcat commands with the right mode for the file's encryption,
+to run on the user's own GPU. Only the hash leaves the page, not the PDF.
+
+It does not remove DRM or permission restrictions other than the opening password.
+
+## Links
+
+- [Source code](https://github.com/nuncaeslupus/pdf-password-breaker)
